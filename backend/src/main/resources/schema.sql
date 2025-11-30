@@ -51,7 +51,8 @@ CREATE TABLE User (
     phone VARCHAR(30),
     status ENUM('active','disabled') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    last_login TIMESTAMP NULL
+    last_login TIMESTAMP NULL,
+    enabled BOOLEAN DEFAULT FALSE
 );
 
 -- ===================================
@@ -209,56 +210,6 @@ CREATE TABLE Notification (
 );
 
 -- ===================================
--- SAMPLE DATA
--- ===================================
-
--- Insert Roles
-INSERT INTO Role (role_name, description) VALUES
-('Dispatcher', 'Manages incident assignment and vehicle dispatch'),
-('Responder', 'Emergency vehicle operator and first responder'),
-('Administrator', 'System administration and user management');
-
--- Insert Sample Addresses
-INSERT INTO Address (city, neighborhood, street, building_no, apartment_no, latitude, longitude) VALUES
-('Cairo', 'Downtown', 'Tahrir Square', '15', NULL, 30.0444, 31.2357),
-('Cairo', 'Heliopolis', 'El Nozha Street', '25', NULL, 30.0956, 31.3372),
-('Cairo', 'Maadi', 'Road 9', '12', '5A', 29.9627, 31.2597),
-('Cairo', 'Zamalek', '26th July Street', '8', NULL, 30.0626, 31.2199),
-('Cairo', 'Nasr City', 'Abbas El Akkad', '30', '12', 30.0626, 31.3377);
-
--- Insert Users
-INSERT INTO User (username, full_name, email, password_hash, phone, status) VALUES
-('dispatcher1', 'Ahmed Hassan', 'ahmed.hassan@emergency.gov', '$2y$10$abcdefghijklmnopqrstuvwxyz1234567890', '+20-10-1234-5678', 'active'),
-('responder1', 'Mohamed Samir', 'mohamed.samir@emergency.gov', '$2y$10$abcdefghijklmnopqrstuvwxyz1234567892', '+20-11-1234-5678', 'active'),
-('admin1', 'Youssef Gamal', 'youssef.gamal@emergency.gov', '$2y$10$abcdefghijklmnopqrstuvwxyz1234567899', '+20-10-9234-5678', 'active');
-
--- Insert User_Role mappings
-INSERT INTO User_Role (user_id, role_id) VALUES
-(1, 1), (2, 2), (3, 3);
-
--- Insert Stations
-INSERT INTO Station (name, service_type, address_id, contact_number, capacity) VALUES
-('Central Medical Station', 'medical', 1, '+20-2-2345-6789', 10),
-('Heliopolis Fire Station', 'fire', 2, '+20-2-2345-6790', 8),
-('Maadi Police Station', 'police', 3, '+20-2-2345-6791', 12);
-
--- Insert Vehicles
-INSERT INTO Vehicle (registration_number, vehicle_type, driver_user_id, station_id, capacity, status) VALUES
-('AMB-001', 'ambulance', 2, 1, 4, 'available'),
-('FIRE-001', 'fire_truck', 2, 2, 6, 'available'),
-('POL-001', 'police_car', 2, 3, 2, 'available');
-
--- Insert Sample Incidents
-INSERT INTO Incident (incident_type, reported_by_user_id, address_id, severity_level, life_cycle_status) VALUES
-('medical', 1, 4, 3, 'reported'),
-('fire', 1, 5, 5, 'reported');
-
--- Insert Sample Assignments
-INSERT INTO Assignment (incident_id, vehicle_id, assigned_by_user_id, assignment_status) VALUES
-(1, 1, 1, 'assigned'),
-(2, 2, 1, 'assigned');
-
--- ===================================
 -- PERFORMANCE INDEXES
 -- ===================================
 -- Core query indexes
@@ -289,3 +240,13 @@ CREATE INDEX idx_station_service_type ON Station(service_type);
 ALTER TABLE Incident ADD CONSTRAINT chk_severity_level CHECK (severity_level BETWEEN 1 AND 5);
 ALTER TABLE Station ADD CONSTRAINT chk_capacity CHECK (capacity > 0);
 ALTER TABLE Vehicle ADD CONSTRAINT chk_vehicle_capacity CHECK (capacity > 0);
+
+-- ===================================
+-- SAMPLE DATA
+-- ===================================
+
+-- Insert Roles
+INSERT INTO Role (role_name, description) VALUES
+('Dispatcher', 'Manages incident assignment and vehicle dispatch'),
+('Responder', 'Emergency vehicle operator and first responder'),
+('Administrator', 'System administration and user management');
