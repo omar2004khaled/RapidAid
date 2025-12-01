@@ -29,7 +29,7 @@ public class AuthApplication {
                 admin.setEmail("admin@emergency.gov");
                 admin.setPassword(encoder.encode("EmergencyAdmin123!"));
                 admin.setPhone("+20-10-0000-0000");
-                admin.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
+//                admin.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
                 admin.setEnabled(true);
 
                 userRepository.save(admin);

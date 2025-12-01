@@ -64,7 +64,7 @@ public class AuthService {
         user.setEmail(request.getEmail().toLowerCase());
         user.setPassword(passwordEncoder.encode(password));
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole());
+//        user.setRole(request.getRole());
         user.setStatus(UserStatus.ACTIVE);
         user.setEnabled(false); // User must verify email first
         user.setCreatedAt(LocalDateTime.now());
@@ -98,7 +98,7 @@ public class AuthService {
         }
 
         // 4. Generate JWT token
-        return jwtService.generateToken(user.getEmail(), user.getRole().toString());
+        return jwtService.generateToken(user.getEmail(), user.getRoleName().toString());
     }
 
     public String getUserRole(String email) {
@@ -106,7 +106,7 @@ public class AuthService {
         if (userOptional.isEmpty()) {
             throw new IllegalArgumentException("User not found");
         }
-        return userOptional.get().getRole() != null ? userOptional.get().getRole().toString() : "DISPATCHER";
+        return userOptional.get().getRoleName() != null ? userOptional.get().getRoleName().toString() : "DISPATCHER";
     }
 
     @Transactional
@@ -121,7 +121,7 @@ public class AuthService {
         user.setEmail(email.toLowerCase());
         user.setUsername(request.getUsername().trim());
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole());
+//        user.setRole(request.getRole());
         user.setStatus(UserStatus.ACTIVE);
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());
@@ -134,6 +134,6 @@ public class AuthService {
         userRepo.save(user);
 
         // Generate JWT token
-        return jwtService.generateToken(user.getEmail(), user.getRole().toString());
+        return jwtService.generateToken(user.getEmail(), user.getRoleName().toString());
     }
 }

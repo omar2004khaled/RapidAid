@@ -42,7 +42,7 @@ public class AdminController {
                 .filter(User::isEnabled)
                 .count();
         long adminUsers = userRepository.findAll().stream()
-                .filter(user -> com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRole()))
+                .filter(user -> com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRoleName()))
                 .count();
 
         return String.format("Total Users: %d, Enabled: %d, Admins: %d",
@@ -60,7 +60,7 @@ public class AdminController {
         User user = userOptional.get();
 
         // Check if user is already admin
-        if (com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRole())) {
+        if (com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRoleName())) {
             return ResponseEntity.badRequest().body("User is already an ADMINISTRATOR");
         }
 
@@ -70,7 +70,7 @@ public class AdminController {
         }
 
         // Promote user to ADMINISTRATOR
-        user.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
+//        user.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
         userRepository.save(user);
 
         return ResponseEntity.ok("User " + user.getEmail() + " promoted to ADMINISTRATOR successfully!");
@@ -92,12 +92,12 @@ public class AdminController {
         }
 
         // Check if user is already dispatcher
-        if (com.example.auth.enums.UserRole.DISPATCHER.equals(user.getRole())) {
+        if (com.example.auth.enums.UserRole.DISPATCHER.equals(user.getRoleName())) {
             return ResponseEntity.badRequest().body("User is already a DISPATCHER");
         }
 
         // Demote user to DISPATCHER
-        user.setRole(com.example.auth.enums.UserRole.DISPATCHER);
+//        user.setRole(com.example.auth.enums.UserRole.DISPATCHER);
         userRepository.save(user);
 
         return ResponseEntity.ok("User " + user.getEmail() + " demoted to DISPATCHER successfully!");
