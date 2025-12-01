@@ -25,7 +25,7 @@ public class OAuth2Service {
         if (existingUser.isPresent()) {
             // Existing user - generate token and login
             User user = existingUser.get();
-            return jwtService.generateToken(user.getEmail(), user.getRole().toString());
+            return jwtService.generateToken(user.getEmail(), user.getRoleName().toString());
         } else {
             // New user - return email for profile completion
             return "NEW_USER:" + email;
