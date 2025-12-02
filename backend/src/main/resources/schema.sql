@@ -55,16 +55,6 @@ CREATE TABLE User (
     enabled BOOLEAN DEFAULT FALSE
 );
 
--- ===================================
--- USER_ROLE TABLE
--- ===================================
-CREATE TABLE User_Role (
-    user_id INT,
-    role_id INT,
-    PRIMARY KEY(user_id, role_id),
-    FOREIGN KEY(user_id) REFERENCES User(user_id),
-    FOREIGN KEY(role_id) REFERENCES Role(role_id)
-);
 
 -- ===================================
 -- STATION TABLE
