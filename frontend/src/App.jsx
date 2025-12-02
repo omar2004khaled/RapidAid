@@ -1,13 +1,15 @@
 import { Routes, Route } from 'react-router-dom';
-import SignUp from "./components/SignUp";
-import Login from "./components/Login";
-import VerifyEmail from "./components/VerifyEmail";
-import EmailVerified from "./components/EmailVerified";
-import ForgotPassword from './components/ForgotPassword';
-import ResetPassword from './components/ResetPassword';
-import OAuthCallback from "./components/OAuthCallback";
-import Dashboard from "./components/Dashboard";
-import CompleteProfile from "./components/CompleteProfile";
+import SignUp from "./Components/SignUp";
+import Login from "./Components/Login";
+import VerifyEmail from "./Components/VerifyEmail";
+import EmailVerified from "./Components/EmailVerified";
+import ForgotPassword from './Components/ForgotPassword';
+import ResetPassword from './Components/ResetPassword';
+import OAuthCallback from "./Components/OAuthCallback";
+import Dashboard from "./Components/Dashboard";
+import CompleteProfile from "./Components/CompleteProfile";
+import DispatcherPage from './pages/DispatcherPage';
+import ReporterPage from './pages/ReporterPage';
 
 function App() {
   return (
@@ -20,7 +22,9 @@ function App() {
       <Route path="/email-verified" element={<EmailVerified />} />
       <Route path="/auth/callback" element={<OAuthCallback />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
-       <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dashboard" element={<Dashboard />} />
+      <Route path="/dispatcher" element={<DispatcherPage />} />
+      <Route path='/report' element={<ReporterPage />} />
       <Route path="/" element={<Login />} />
     </Routes>
   );

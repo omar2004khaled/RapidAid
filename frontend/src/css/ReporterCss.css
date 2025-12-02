@@ -1,0 +1,161 @@
+/* Reporter Page Styles */
+
+.report-container {
+    max-width: 600px;
+    margin: 2rem auto;
+    padding: 2rem;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+.report-head {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    border-radius: 12px 12px 0 0;
+    padding: 1.5rem 2rem;
+    text-align: center;
+}
+
+.report-head h2 {
+    color: #ffffff;
+    font-size: 1.75rem;
+    font-weight: 600;
+    margin: 0;
+    text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+}
+
+.report-body {
+    background: #ffffff;
+    border-radius: 0 0 12px 12px;
+    padding: 2rem;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+}
+
+.report-body form {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.form-group label {
+    color: #2d3748;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.form-group input,
+.form-group select,
+.form-group textarea {
+    padding: 0.75rem 1rem;
+    border: 2px solid #e2e8f0;
+    border-radius: 8px;
+    font-size: 1rem;
+    color: #2d3748;
+    background: #f7fafc;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.form-group input:focus,
+.form-group select:focus,
+.form-group textarea:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.15);
+    background: #ffffff;
+}
+
+.form-group input::placeholder,
+.form-group textarea::placeholder {
+    color: #a0aec0;
+}
+
+.form-group select {
+    cursor: pointer;
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%234a5568' d='M6 8L1 3h10z'/%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 1rem center;
+    padding-right: 2.5rem;
+}
+
+.form-group textarea {
+    resize: vertical;
+    min-height: 100px;
+}
+
+.submit-btn {
+    margin-top: 1rem;
+    padding: 1rem 2rem;
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: #ffffff;
+    border: none;
+    border-radius: 8px;
+    font-size: 1.1rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.submit-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:active {
+    transform: translateY(0);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+    .report-container {
+        margin: 1rem;
+        padding: 1rem;
+    }
+
+    .report-head {
+        padding: 1.25rem 1.5rem;
+    }
+
+    .report-head h2 {
+        font-size: 1.5rem;
+    }
+
+    .report-body {
+        padding: 1.5rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .report-container {
+        margin: 0.5rem;
+        padding: 0.5rem;
+    }
+
+    .report-head {
+        padding: 1rem;
+    }
+
+    .report-head h2 {
+        font-size: 1.25rem;
+    }
+
+    .report-body {
+        padding: 1rem;
+    }
+
+    .form-group input,
+    .form-group select,
+    .form-group textarea {
+        padding: 0.625rem 0.875rem;
+        font-size: 0.95rem;
+    }
+
+    .submit-btn {
+        padding: 0.875rem 1.5rem;
+        font-size: 1rem;
+    }
+}
