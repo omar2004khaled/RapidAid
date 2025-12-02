@@ -13,12 +13,12 @@ function DispatcherPage() {
         { id: 1, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
         { id: 2, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
         { id: 3, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
-        { id: 1, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
-        { id: 2, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
-        { id: 3, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
-        { id: 1, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
-        { id: 2, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
-        { id: 3, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
+        { id: 4, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
+        { id: 5, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
+        { id: 6, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
+        { id: 7, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
+        { id: 8, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
+        { id: 9, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
     ]);
 
     const getVehicleTypeMapping = (vehicleType) => {
