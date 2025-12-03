@@ -17,6 +17,18 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Integer>
                     """, nativeQuery = true)
     List<Assignment> findByAssignmentStatus(String status);
 
-    List<Assignment> findByVehicleVehicleIdAndAssignmentStatusNot(Integer vehicleId, AssignmentStatus status);
+    @Query(value = """ 
+                    SELECT * 
+                    FROM assignment 
+                    WHERE vehicle_id = :vehicleId 
+                    AND assignment_status != :status
+                    """, nativeQuery = true)
+    List<Assignment> findByVehicleVehicleIdAndAssignmentStatusNot(Integer vehicleId, String status);
+    
+    @Query(value = """
+                        SELECT * 
+                        FROM assignment 
+                        WHERE incident_id = :incidentId
+                        """, nativeQuery = true)
     List<Assignment> findByIncidentIncidentId(Integer incidentId);
 }

@@ -1,6 +1,8 @@
 package com.example.auth.controller.rest;
 
 import com.example.auth.dto.VehicleResponse;
+
+import java.math.BigDecimal;
 import com.example.auth.enums.VehicleStatus;
 import com.example.auth.service.VehicleService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,5 +39,13 @@ public class VehicleController {
     ) {
         List<VehicleResponse> vehicles = vehicleService.getVehiclesByStatus(status);
         return ResponseEntity.ok(vehicles);
+    }
+
+    @PutMapping("/{vehicleId}/location")
+    public ResponseEntity<String> updateLocation(@PathVariable Integer vehicleId, 
+                                               @RequestParam BigDecimal latitude, 
+                                               @RequestParam BigDecimal longitude) {
+        vehicleService.updateLocation(vehicleId, latitude, longitude);
+        return ResponseEntity.ok("Vehicle location updated successfully");
     }
 }
