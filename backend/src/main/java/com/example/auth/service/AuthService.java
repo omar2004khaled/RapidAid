@@ -1,16 +1,15 @@
 package com.example.auth.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.example.auth.repository.UserRepository;
-import com.example.auth.repository.VerificationTokenRepository;
+import com.example.auth.config.JwtService;
+import com.example.auth.dto.RegisterRequest;
 import com.example.auth.entity.User;
 import com.example.auth.entity.VerificationToken;
-import com.example.auth.dto.RegisterRequest;
-import com.example.auth.config.JwtService;
-import com.example.auth.enums.UserRole;
 import com.example.auth.enums.UserStatus;
+import com.example.auth.repository.UserRepository;
+import com.example.auth.repository.VerificationTokenRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -106,7 +105,7 @@ public class AuthService {
         if (userOptional.isEmpty()) {
             throw new IllegalArgumentException("User not found");
         }
-        return userOptional.get().getRole() != null ? userOptional.get().getRole().toString() : "DISPATCHER";
+        return userOptional.get().getRole() != null ? userOptional.get().getRole().toString() : "REPORTER";
     }
 
     @Transactional
@@ -121,7 +120,7 @@ public class AuthService {
         user.setEmail(email.toLowerCase());
         user.setUsername(request.getUsername().trim());
         user.setPhone(request.getPhone());
-        user.setRole(request.getRole());
+//        user.setRole(request.getRole());
         user.setStatus(UserStatus.ACTIVE);
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());

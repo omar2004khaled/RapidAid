@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
+import { authAPI } from '../services/api';
 
 
 const Login = () => {
@@ -54,71 +55,11 @@ useEffect(() => {
   setError('');
 
   try {
-    const response = await fetch("http://localhost:8080/auth/login", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      mode: 'cors',
-      body: JSON.stringify({
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password
-      })
+    const data = await authAPI.login({
+      email: formData.email.toLowerCase().trim(),
+      password: formData.password
     });
 
-    console.log("Response status:", response.status);
-    console.log("Content-Type:", response.headers.get('content-type'));
-
-    // Get response as text first
-    const responseText = await response.text();
-    console.log("Raw response:", responseText);
-
-    let data;
-    
-    // Check if response is JSON
-    const contentType = response.headers.get('content-type');
-    if (contentType && contentType.includes('application/json')) {
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error("JSON parse error:", parseError);
-        // If JSON parsing fails but we have text, use the text as message
-        data = { message: responseText };
-      }
-    } else {
-      // Response is not JSON, use the text as the error message
-      data = { message: responseText };
-    }
-
-    console.log("Processed data:", data);
-
-    if (!response.ok) {
-      // Extract error message safely
-      let errorMessage = 'Login failed. Please check your credentials.';
-      
-      if (data && typeof data.message === 'string') {
-        errorMessage = data.message;
-      } else if (responseText && typeof responseText === 'string') {
-        errorMessage = responseText;
-      } else if (data && data.error) {
-        errorMessage = data.error;
-      }
-
-      // Handle specific error cases
-      if (errorMessage.includes('verify') || errorMessage.includes('verified')) {
-        errorMessage = 'Please verify your email before logging in. Check your inbox for the verification link.';
-      } else if (response.status === 401) {
-        errorMessage = 'Invalid email or password. Please try again.';
-      } else if (response.status === 403) {
-        errorMessage = 'Account not verified. Please check your email for verification link.';
-      }
-
-      setError(errorMessage);
-      return;
-    }
-
-    // Success case - response should be JSON
     if (data.token) {
       localStorage.setItem('authToken', data.token);
       console.log("Login successful, token stored");
@@ -127,11 +68,20 @@ useEffect(() => {
     navigate('/dashboard'); 
   } catch (error) {
     console.error("Login Error:", error);
-    if (error.message === 'Failed to fetch') {
-      setError('Cannot connect to server. Please try again later.');
-    } else {
-      setError('An unexpected error occurred. Please try again.');
+    
+    let errorMessage = error.message;
+    
+    if (errorMessage.includes('verify') || errorMessage.includes('verified')) {
+      errorMessage = 'Please verify your email before logging in. Check your inbox for the verification link.';
+    } else if (errorMessage.includes('401')) {
+      errorMessage = 'Invalid email or password. Please try again.';
+    } else if (errorMessage.includes('403')) {
+      errorMessage = 'Account not verified. Please check your email for verification link.';
+    } else if (errorMessage.includes('Failed to fetch')) {
+      errorMessage = 'Cannot connect to server. Please ensure the backend server is running on http://localhost:8080';
     }
+    
+    setError(errorMessage);
   } finally {
     setLoading(false);
   }
@@ -326,8 +276,17 @@ useEffect(() => {
                 </button>
 
 
-          {/* Sign up link */}
+          {/* Report Emergency Button */}
           <div className="text-center border-t border-gray-700 pt-6">
+            <Link 
+              to="/report" 
+              className="w-full bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 mb-4"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
+              </svg>
+              Report Emergency
+            </Link>
             <p className="text-sm text-gray-300">
               Don't have an account?{' '}
               <Link 
