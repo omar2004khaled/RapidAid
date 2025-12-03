@@ -43,27 +43,6 @@ public class AssignmentService {
         this.vehicleRepository = vehicleRepository;
     }
 
-    @Transactional
-    public void acceptAssignment(Integer assignmentId, Long responderId) {
-        Assignment assignment = assignmentRepository.findById(assignmentId)
-                .orElseThrow(() -> new RuntimeException("Assignment not found"));
-
-        User responder = userRepository.findById(responderId)
-                .orElseThrow(() -> new RuntimeException("Responder not found"));
-
-        if (!assignment.getVehicle().getDriver().getUserId().equals(responderId)) {
-            throw new RuntimeException("Responder is not the driver of this vehicle");
-        }
-
-        assignment.setAcceptedAt(LocalDateTime.now());
-        assignment.setAssignmentStatus(AssignmentStatus.ENROUTE);
-        assignmentRepository.save(assignment);
-
-        Vehicle vehicle = assignment.getVehicle();
-        vehicle.setStatus(VehicleStatus.ON_ROUTE);
-        vehicleRepository.save(vehicle);
-    }
-
     public List<AssignmentResponse> getAllAssignments() {
         List<Assignment> assignments = assignmentRepository.findAll();
         return assignments.stream()
