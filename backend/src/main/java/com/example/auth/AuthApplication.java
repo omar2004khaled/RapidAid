@@ -25,11 +25,13 @@ public class AuthApplication {
             // Check if super admin already exists
             if (userRepository.findByEmail("admin@emergency.gov").isEmpty()) {
                 User admin = new User();
+                admin.setUsername("admin");
                 admin.setFullName("System Administrator");
                 admin.setEmail("admin@emergency.gov");
                 admin.setPassword(encoder.encode("EmergencyAdmin123!"));
                 admin.setPhone("+20-10-0000-0000");
                 admin.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
+                admin.setStatus(com.example.auth.enums.UserStatus.ACTIVE);
                 admin.setEnabled(true);
 
                 userRepository.save(admin);

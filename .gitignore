@@ -25,6 +25,7 @@ bin/
 node_modules/
 dist/
 build/
+static/
 
 # OS
 .DS_Store
