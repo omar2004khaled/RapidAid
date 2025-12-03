@@ -1,4 +1,4 @@
-package com.example.auth.controller;
+package com.example.auth.controller.rest;
 
 import com.example.auth.dto.AuthResponse;
 import com.example.auth.dto.LoginRequest;
@@ -6,11 +6,7 @@ import com.example.auth.dto.RegisterRequest;
 import com.example.auth.dto.PasswordResetRequest;
 import com.example.auth.dto.ResetPasswordRequest;
 import com.example.auth.service.AuthService;
-import org.springframework.http.HttpStatus;
 import com.example.auth.service.PasswordResetService;
-import java.util.Map;
-import java.util.HashMap;
-import java.util.UUID;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

@@ -1,4 +1,4 @@
-package com.example.auth.controller;
+package com.example.auth.controller.rest;
 
 import org.springframework.web.bind.annotation.*;
 import com.example.auth.service.VerificationService;

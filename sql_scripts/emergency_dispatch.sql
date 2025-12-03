@@ -52,18 +52,10 @@ CREATE TABLE User (
     status ENUM('active','disabled') DEFAULT 'active',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL
-);
-
--- ===================================
--- USER_ROLE TABLE
--- ===================================
-CREATE TABLE User_Role (
-    user_id INT,
-    role_id INT,
-    PRIMARY KEY(user_id, role_id),
-    FOREIGN KEY(user_id) REFERENCES User(user_id),
+    role_id INT
     FOREIGN KEY(role_id) REFERENCES Role(role_id)
 );
+
 
 -- ===================================
 -- STATION TABLE
@@ -195,7 +187,7 @@ CREATE TABLE Sensor_Reading (
 -- NOTIFICATION TABLE
 -- ===================================
 CREATE TABLE Notification (
-    notification_id INT AUTO_INCREMENT PRIMARY KEY,
+    notification_id BIGINT AUTO_INCREMENT PRIMARY KEY,
     type ENUM('dispatcher','responder','system'),
     message VARCHAR(255),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,

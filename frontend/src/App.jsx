@@ -25,7 +25,7 @@ function App() {
       <Route path="/dashboard" element={<Dashboard />} />
       <Route path="/dispatcher" element={<DispatcherPage />} />
       <Route path='/report' element={<ReporterPage />} />
-      <Route path="/" element={<ReporterPage />} />
+      <Route path="/" element={<Login />} />
     </Routes>
   );
 }
