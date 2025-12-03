@@ -1,13 +1,11 @@
 package com.example.auth.controller.rest;
 
 import com.example.auth.dto.CreateAdminRequest;
-import com.example.auth.dto.UnitCreateRequest;
-import com.example.auth.dto.UnitUpdateRequest;
-import com.example.auth.entity.User;
 import com.example.auth.entity.Incident;
+import com.example.auth.entity.User;
 import com.example.auth.enums.UserRole;
-import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.IncidentRepository;
+import com.example.auth.repository.UserRepository;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -16,8 +14,8 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
-
 import java.util.Optional;
 
 @RestController

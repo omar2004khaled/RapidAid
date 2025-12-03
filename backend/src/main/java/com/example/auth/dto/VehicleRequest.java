@@ -16,7 +16,6 @@ public class VehicleRequest {
     private String registrationNumber;
     private VehicleType vehicleType;
     private Integer driverUserId;
-    private Integer stationId;
     private Integer capacity;
     private VehicleStatus status;
     private BigDecimal lastLatitude;

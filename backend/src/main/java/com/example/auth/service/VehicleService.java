@@ -3,7 +3,6 @@ package com.example.auth.service;
 import com.example.auth.dto.VehicleResponse;
 import com.example.auth.entity.Assignment;
 import com.example.auth.entity.Incident;
-import com.example.auth.entity.SensorReading;
 import com.example.auth.entity.Vehicle;
 import com.example.auth.enums.AssignmentStatus;
 import com.example.auth.enums.VehicleStatus;

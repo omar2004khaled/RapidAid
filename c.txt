@@ -1,6 +1,0 @@
-Add feat: incident assignment:
--Add Controller for assigning incidents to responders
--Add Service for incident assignment logic
--Add Websocket integeration for real-time updates
--Removed VehicleAssignmentPreferredRule to simplify assignment logic
--API endpoints are given are executed without authentication for testing purposes

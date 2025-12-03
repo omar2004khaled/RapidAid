@@ -34,10 +34,6 @@ public class Vehicle {
     @JoinColumn(name = "driver_user_id", referencedColumnName = "user_id")
     private User driver;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "station_id", referencedColumnName = "station_id")
-    private Station station;
-
     @Column(name = "capacity")
     private Integer capacity;
 

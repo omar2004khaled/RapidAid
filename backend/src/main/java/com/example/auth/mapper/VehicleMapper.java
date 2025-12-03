@@ -13,15 +13,11 @@ public interface VehicleMapper {
 
     @Mapping(target = "driverUserId", source = "driver.userId")
     @Mapping(target = "driverName", source = "driver.fullName")
-    @Mapping(target = "stationId", source = "station.stationId")
-    @Mapping(target = "stationName", source = "station.name")
     VehicleResponse toResponse(Vehicle vehicle);
 
     @Mapping(target = "driver.userId", source = "driverUserId")
-    @Mapping(target = "station.stationId", source = "stationId")
     Vehicle toEntity(VehicleRequest request);
 
     @Mapping(target = "driver.userId", source = "driverUserId")
-    @Mapping(target = "station.stationId", source = "stationId")
     void updateEntityFromRequest(VehicleRequest request, @MappingTarget Vehicle vehicle);
 }
