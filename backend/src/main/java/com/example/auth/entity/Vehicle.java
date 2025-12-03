@@ -54,4 +54,12 @@ public class Vehicle {
     @UpdateTimestamp
     @Column(name = "last_updated_time")
     private LocalDateTime lastUpdatedTime;
+
+    public void setAvailable() {
+        this.status = VehicleStatus.AVAILABLE;
+    }
+
+    public void setOnRoute() {
+        this.status = VehicleStatus.ON_ROUTE;
+    }
 }

@@ -1,13 +1,16 @@
 package com.example.auth.entity;
 
 import com.example.auth.enums.UserRole;
-import jakarta.persistence.*;
-import java.time.LocalDateTime;
-import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.example.auth.enums.UserStatus;
-import lombok.*;
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
-import org.springframework.lang.Contract;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "User", uniqueConstraints = {
@@ -51,15 +54,10 @@ public class User {
     @Column(name = "last_login")
     private LocalDateTime lastLogin;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "role_id", referencedColumnName = "role_id")
-    private Role role;
+    private UserRole role;
 
     private boolean enabled = false;
 
-    public UserRole getRoleName() {
-        return role != null ? role.getRoleName() : null;
-    }
 
     @Override
     public String toString() {
@@ -68,7 +66,7 @@ public class User {
                 ", username='" + username + '\'' +
                 ", fullName='" + fullName + '\'' +
                 ", email='" + email + '\'' +
-                ", role=" + role.getRoleName() +
+                ", role=" + role +
                 ", status=" + status +
                 ", enabled=" + enabled +
                 '}';

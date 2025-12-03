@@ -1,17 +1,13 @@
-package com.example.auth.controller;
-
-import java.util.Optional;
-
-import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+package com.example.auth.controller.rest;
 
 import com.example.auth.entity.User;
+import com.example.auth.enums.UserRole;
 import com.example.auth.repository.UserRepository;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/admin")
@@ -22,11 +18,6 @@ public class AdminController {
 
     public AdminController(UserRepository userRepository) {
         this.userRepository = userRepository;
-    }
-
-    @GetMapping("/dashboard")
-    public String adminDashboard() {
-        return "Welcome to Admin Dashboard!";
     }
 
     @GetMapping("/users")
@@ -42,7 +33,7 @@ public class AdminController {
                 .filter(User::isEnabled)
                 .count();
         long adminUsers = userRepository.findAll().stream()
-                .filter(user -> com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRoleName()))
+                .filter(user -> com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRole()))
                 .count();
 
         return String.format("Total Users: %d, Enabled: %d, Admins: %d",
@@ -60,7 +51,7 @@ public class AdminController {
         User user = userOptional.get();
 
         // Check if user is already admin
-        if (com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRoleName())) {
+        if (com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRole())) {
             return ResponseEntity.badRequest().body("User is already an ADMINISTRATOR");
         }
 
@@ -70,7 +61,7 @@ public class AdminController {
         }
 
         // Promote user to ADMINISTRATOR
-//        user.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
+        user.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
         userRepository.save(user);
 
         return ResponseEntity.ok("User " + user.getEmail() + " promoted to ADMINISTRATOR successfully!");
@@ -92,15 +83,15 @@ public class AdminController {
         }
 
         // Check if user is already dispatcher
-        if (com.example.auth.enums.UserRole.DISPATCHER.equals(user.getRoleName())) {
-            return ResponseEntity.badRequest().body("User is already a DISPATCHER");
+        if (UserRole.REPORTER.equals(user.getRole())) {
+            return ResponseEntity.badRequest().body("User is already a REPORTER");
         }
 
-        // Demote user to DISPATCHER
-//        user.setRole(com.example.auth.enums.UserRole.DISPATCHER);
+        // Demote user to REPORTER
+        user.setRole(com.example.auth.enums.UserRole.REPORTER);
         userRepository.save(user);
 
-        return ResponseEntity.ok("User " + user.getEmail() + " demoted to DISPATCHER successfully!");
+        return ResponseEntity.ok("User " + user.getEmail() + " demoted to REPORTER successfully!");
     }
 
     // Get user by ID

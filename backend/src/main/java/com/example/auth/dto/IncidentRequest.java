@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 public class IncidentRequest {
     private ServiceType incidentType;
     private Integer reportedByUserId;
-    private Integer addressId;
+    private AddressRequest address;
     private Integer severityLevel;
     private IncidentStatus lifeCycleStatus;
 }

@@ -16,11 +16,11 @@ public interface IncidentMapper {
     @Mapping(target = "address", source = "address")
     IncidentResponse toResponse(Incident incident);
 
-    @Mapping(target = "reportedByUser.userId", source = "reportedByUserId")
-    @Mapping(target = "address.addressId", source = "addressId")
+    @Mapping(target = "reportedByUser", ignore = true) // Handle manually in service
+    @Mapping(target = "address", source = "address") // Use AddressMapper
     Incident toEntity(IncidentRequest request);
 
-    @Mapping(target = "reportedByUser.userId", source = "reportedByUserId")
-    @Mapping(target = "address.addressId", source = "addressId")
+    @Mapping(target = "reportedByUser", ignore = true) // Handle manually in service
+    @Mapping(target = "address", source = "address") // Use AddressMapper
     void updateEntityFromRequest(IncidentRequest request, @MappingTarget Incident incident);
 }

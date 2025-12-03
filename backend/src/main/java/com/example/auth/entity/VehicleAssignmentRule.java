@@ -12,9 +12,7 @@ import lombok.*;
 @Getter
 @Setter
 public class VehicleAssignmentRule {
-    private static final Integer DEFAULT_MIN_VEHICLES_NEEDED = 1;
-    private static final Integer DEFAULT_PRIORITY = 0;
-    private static final Boolean DEFAULT_ACTIVE_STATUS = true;
+
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -29,11 +27,11 @@ public class VehicleAssignmentRule {
     private ServiceType incidentType;
 
     @Column(name = "min_vehicles_needed")
-    private Integer minVehiclesNeeded = DEFAULT_MIN_VEHICLES_NEEDED;
+    private Integer minVehiclesNeeded = 1;
 
     @Column(name = "priority")
-    private Integer priority = DEFAULT_PRIORITY;
+    private Integer priority = 0;
 
     @Column(name = "active")
-    private Boolean active = DEFAULT_ACTIVE_STATUS;
+    private Boolean active = true;
 }

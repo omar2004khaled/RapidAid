@@ -1,16 +1,15 @@
 package com.example.auth.service;
 
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-import com.example.auth.repository.UserRepository;
-import com.example.auth.repository.VerificationTokenRepository;
+import com.example.auth.config.JwtService;
+import com.example.auth.dto.RegisterRequest;
 import com.example.auth.entity.User;
 import com.example.auth.entity.VerificationToken;
-import com.example.auth.dto.RegisterRequest;
-import com.example.auth.config.JwtService;
-import com.example.auth.enums.UserRole;
 import com.example.auth.enums.UserStatus;
+import com.example.auth.repository.UserRepository;
+import com.example.auth.repository.VerificationTokenRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
 
@@ -64,7 +63,7 @@ public class AuthService {
         user.setEmail(request.getEmail().toLowerCase());
         user.setPassword(passwordEncoder.encode(password));
         user.setPhone(request.getPhone());
-//        user.setRole(request.getRole());
+        user.setRole(request.getRole());
         user.setStatus(UserStatus.ACTIVE);
         user.setEnabled(false); // User must verify email first
         user.setCreatedAt(LocalDateTime.now());
@@ -98,7 +97,7 @@ public class AuthService {
         }
 
         // 4. Generate JWT token
-        return jwtService.generateToken(user.getEmail(), user.getRoleName().toString());
+        return jwtService.generateToken(user.getEmail(), user.getRole().toString());
     }
 
     public String getUserRole(String email) {
@@ -106,7 +105,7 @@ public class AuthService {
         if (userOptional.isEmpty()) {
             throw new IllegalArgumentException("User not found");
         }
-        return userOptional.get().getRoleName() != null ? userOptional.get().getRoleName().toString() : "DISPATCHER";
+        return userOptional.get().getRole() != null ? userOptional.get().getRole().toString() : "REPORTER";
     }
 
     @Transactional
@@ -134,6 +133,6 @@ public class AuthService {
         userRepo.save(user);
 
         // Generate JWT token
-        return jwtService.generateToken(user.getEmail(), user.getRoleName().toString());
+        return jwtService.generateToken(user.getEmail(), user.getRole().toString());
     }
 }

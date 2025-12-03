@@ -31,15 +31,6 @@ CREATE TABLE Address (
 );
 
 -- ===================================
--- ROLE TABLE
--- ===================================
-CREATE TABLE Role (
-    role_id INT AUTO_INCREMENT PRIMARY KEY,
-    role_name ENUM('Dispatcher','Responder','Administrator'),
-    description VARCHAR(255)
-);
-
--- ===================================
 -- USER TABLE
 -- ===================================
 CREATE TABLE User (
@@ -49,37 +40,38 @@ CREATE TABLE User (
     email VARCHAR(150) UNIQUE,
     password_hash VARCHAR(512),
     phone VARCHAR(30),
-    status ENUM('active','disabled') DEFAULT 'active',
+    role ENUM('REPORTER','ADMINISTRATOR'),
+    status ENUM('ACTIVE','DISABLED') DEFAULT 'ACTIVE',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     last_login TIMESTAMP NULL,
     enabled BOOLEAN DEFAULT FALSE
 );
 
-
+-- ===================================
+-- VEHICLE TABLE
+-- ===================================
 -- ===================================
 -- STATION TABLE
 -- ===================================
 CREATE TABLE Station (
     station_id INT AUTO_INCREMENT PRIMARY KEY,
-    name VARCHAR(100),
-    service_type ENUM('medical','fire','police'),
+    name VARCHAR(150),
     address_id INT,
-    contact_number VARCHAR(30),
-    capacity INT,
+    service_type VARCHAR(50),
+    capacity INT DEFAULT 1,
+    latitude DECIMAL(10,7),
+    longitude DECIMAL(10,7),
     FOREIGN KEY(address_id) REFERENCES Address(address_id)
 );
 
--- ===================================
--- VEHICLE TABLE
--- ===================================
 CREATE TABLE Vehicle (
     vehicle_id INT AUTO_INCREMENT PRIMARY KEY,
     registration_number VARCHAR(50) UNIQUE,
-    vehicle_type ENUM('ambulance','police_car','fire_truck'),
+    vehicle_type ENUM('AMBULANCE','POLICE_CAR','FIRE_TRUCK'),
     driver_user_id INT,
     station_id INT,
     capacity INT,
-    status ENUM('available','on_route','at_service_center') DEFAULT 'available',
+    status ENUM('AVAILABLE','ON_ROUTE','AT_SERVICE_CENTER') DEFAULT 'AVAILABLE',
     last_latitude DECIMAL(10,7),
     last_longitude DECIMAL(10,7),
     last_updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
@@ -104,14 +96,14 @@ CREATE TABLE Vehicle_Staff (
 -- ===================================
 CREATE TABLE Incident (
     incident_id INT AUTO_INCREMENT PRIMARY KEY,
-    incident_type ENUM('medical','fire','police'),
+    incident_type ENUM('MEDICAL','FIRE','POLICE'),
     reported_by_user_id INT,
     address_id INT,
     severity_level INT,
     time_reported TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     time_assigned TIMESTAMP NULL,
     time_resolved TIMESTAMP NULL,
-    life_cycle_status ENUM('reported','assigned','resolved','cancelled') DEFAULT 'reported',
+    life_cycle_status ENUM('REPORTED','ASSIGNED','RESOLVED','CANCELLED') DEFAULT 'REPORTED',
     FOREIGN KEY(reported_by_user_id) REFERENCES User(user_id),
     FOREIGN KEY(address_id) REFERENCES Address(address_id)
 );
@@ -128,34 +120,13 @@ CREATE TABLE Assignment (
     accepted_at TIMESTAMP NULL,
     arrived_at TIMESTAMP NULL,
     completed_at TIMESTAMP NULL,
-    assignment_status ENUM('assigned','accepted','enroute','arrived','completed','cancelled') DEFAULT 'assigned',
+    assignment_status ENUM('ASSIGNED','ACCEPTED','ENROUTE','ARRIVED','COMPLETED','CANCELLED') DEFAULT 'ASSIGNED',
     notes VARCHAR(255),
     FOREIGN KEY(incident_id) REFERENCES Incident(incident_id),
     FOREIGN KEY(vehicle_id) REFERENCES Vehicle(vehicle_id),
     FOREIGN KEY(assigned_by_user_id) REFERENCES User(user_id)
 );
 
--- ===================================
--- VEHICLE ASSIGNMENT RULE TABLE
--- ===================================
-CREATE TABLE VehicleAssignmentRule (
-    rule_id INT AUTO_INCREMENT PRIMARY KEY,
-    incident_location_pattern VARCHAR(255),
-    incident_type ENUM('medical','fire','police'),
-    min_vehicles_needed INT DEFAULT 1,
-    priority INT DEFAULT 0,
-    active BOOLEAN DEFAULT TRUE
-);
-
--- ===================================
--- RULE_PREFERRED_VEHICLE_TYPE TABLE
--- ===================================
-CREATE TABLE Rule_Preferred_Vehicle_Type (
-    rule_id INT,
-    vehicle_type ENUM('ambulance','police_car','fire_truck'),
-    PRIMARY KEY(rule_id, vehicle_type),
-    FOREIGN KEY(rule_id) REFERENCES VehicleAssignmentRule(rule_id)
-);
 
 -- ===================================
 -- SENSOR TABLE
@@ -163,7 +134,7 @@ CREATE TABLE Rule_Preferred_Vehicle_Type (
 CREATE TABLE Sensor (
     sensor_id INT AUTO_INCREMENT PRIMARY KEY,
     vehicle_id INT,
-    sensor_type ENUM('geolocation','speed','temperature'),
+    sensor_type ENUM('GEOLOCATION','SPEED','TEMPERATURE'),
     installed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     description VARCHAR(255),
     FOREIGN KEY(vehicle_id) REFERENCES Vehicle(vehicle_id)
@@ -187,10 +158,10 @@ CREATE TABLE Sensor_Reading (
 -- ===================================
 CREATE TABLE Notification (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
-    type ENUM('dispatcher','responder','system'),
+    type ENUM('DISPATCHER','RESPONDER','SYSTEM'),
     message VARCHAR(255),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    status ENUM('unread','read') DEFAULT 'unread',
+    status ENUM('UNREAD','READ') DEFAULT 'UNREAD',
     receiver_user_id INT NULL,
     role_id INT NULL,
     related_incident_id INT NULL,
@@ -231,12 +202,3 @@ ALTER TABLE Incident ADD CONSTRAINT chk_severity_level CHECK (severity_level BET
 ALTER TABLE Station ADD CONSTRAINT chk_capacity CHECK (capacity > 0);
 ALTER TABLE Vehicle ADD CONSTRAINT chk_vehicle_capacity CHECK (capacity > 0);
 
--- ===================================
--- SAMPLE DATA
--- ===================================
-
--- Insert Roles
-INSERT INTO Role (role_name, description) VALUES
-('Dispatcher', 'Manages incident assignment and vehicle dispatch'),
-('Responder', 'Emergency vehicle operator and first responder'),
-('Administrator', 'System administration and user management');

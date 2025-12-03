@@ -3,10 +3,7 @@ package com.example.auth.entity;
 import com.example.auth.enums.IncidentStatus;
 import com.example.auth.enums.ServiceType;
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
-import lombok.Setter;
+import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
@@ -18,6 +15,7 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @Getter
 @Setter
+@Builder
 public class Incident {
 
     @Id
@@ -33,7 +31,7 @@ public class Incident {
     @JoinColumn(name = "reported_by_user_id", referencedColumnName = "user_id")
     private User reportedByUser;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.PERSIST)
     @JoinColumn(name = "address_id", referencedColumnName = "address_id")
     private Address address;
 
@@ -51,6 +49,12 @@ public class Incident {
     private LocalDateTime timeResolved;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "life_cycle_status")
+    @Column(name = "life_cycle_status", nullable=false)
+    @Builder.Default
     private IncidentStatus lifeCycleStatus = IncidentStatus.REPORTED;
+
+    public void setAssigned() {
+        this.lifeCycleStatus = IncidentStatus.ASSIGNED;
+        this.timeAssigned = LocalDateTime.now();
+    }
 }

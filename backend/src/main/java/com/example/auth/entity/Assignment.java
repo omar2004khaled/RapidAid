@@ -17,6 +17,7 @@ import java.util.Set;
 @NoArgsConstructor
 @Getter
 @Setter
+@Builder
 public class Assignment {
 
     @Id
@@ -51,6 +52,7 @@ public class Assignment {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "assignment_status")
+    @Builder.Default
     private AssignmentStatus assignmentStatus = AssignmentStatus.ASSIGNED;
 
     @Column(name = "notes", length = 255)
@@ -60,5 +62,6 @@ public class Assignment {
     @CollectionTable(name = "Rule_Preferred_Vehicle_Type", joinColumns = @JoinColumn(name = "rule_id"))
     @Column(name = "vehicle_type")
     @Enumerated(EnumType.STRING)
+    @Builder.Default
     private Set<VehicleType> preferredVehicleTypes = new HashSet<>();
 }
