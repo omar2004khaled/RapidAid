@@ -55,6 +55,32 @@ public class AdminController {
                 totalUsers, enabledUsers, adminUsers);
     }
 
+    @PostMapping("/promote/{userId}")
+    public ResponseEntity<?> promoteToAdmin(@PathVariable Long userId) {
+        Optional<User> userOptional = userRepository.findById(userId);
+
+        if (userOptional.isEmpty()) {
+            return ResponseEntity.badRequest().body("User not found with ID: " + userId);
+        }
+
+        User user = userOptional.get();
+
+        // Check if user is already admin
+        if (com.example.auth.enums.UserRole.ADMINISTRATOR.equals(user.getRole())) {
+            return ResponseEntity.badRequest().body("User is already an ADMINISTRATOR");
+        }
+
+        // Check if user has verified email
+        if (!user.isEnabled()) {
+            return ResponseEntity.badRequest().body("User must verify email before promotion");
+        }
+
+        // Promote user to ADMINISTRATOR
+        user.setRole(com.example.auth.enums.UserRole.ADMINISTRATOR);
+        userRepository.save(user);
+
+        return ResponseEntity.ok("User " + user.getEmail() + " promoted to ADMINISTRATOR successfully!");
+    }
     @PostMapping("/create")
     public ResponseEntity<?> createAdmin(@RequestBody CreateAdminRequest request) {
         try {

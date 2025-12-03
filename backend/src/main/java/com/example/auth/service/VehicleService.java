@@ -37,40 +37,39 @@ public class VehicleService {
     }
 
     @Transactional
-    public void checkLocationMatch(SensorReading reading) {
-        BigDecimal sensorLat = reading.getLatitude();
-        BigDecimal sensorLng = reading.getLongitude();
-
-        Vehicle vehicle = reading.getSensor().getVehicle();
+    public void updateLocation(Integer vehicleId, BigDecimal latitude, BigDecimal longitude) {
+        Vehicle vehicle = vehicleRepository.findById(vehicleId)
+                .orElseThrow(() -> new RuntimeException("Vehicle not found"));
+        vehicle.setLastLatitude(latitude);
+        vehicle.setLastLongitude(longitude);
         vehicle.setLastUpdatedTime(LocalDateTime.now());
         vehicleRepository.save(vehicle);
-
-        if (sensorLat == null || sensorLng == null) return;
-
-        Integer vehicleId = vehicle.getVehicleId();
+        
+        if (latitude == null || longitude == null) return;
+        
         List<Assignment> activeAssignments = assignmentRepository
-                .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, AssignmentStatus.COMPLETED);
-
+                .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, "COMPLETED");
+        
         for (Assignment assignment : activeAssignments) {
             Incident incident = assignment.getIncident();
             BigDecimal incidentLat = incident.getAddress().getLatitude();
             BigDecimal incidentLng = incident.getAddress().getLongitude();
-
+            
             if (incidentLat != null && incidentLng != null &&
-                sensorLat.equals(incidentLat) && sensorLng.equals(incidentLng)) {
-
+                latitude.equals(incidentLat) && longitude.equals(incidentLng)) {
+                
                 assignment.setAssignmentStatus(AssignmentStatus.COMPLETED);
                 assignment.setCompletedAt(LocalDateTime.now());
                 assignmentRepository.save(assignment);
-
+                
                 List<Assignment> remainingAssignments = assignmentRepository
-                        .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, AssignmentStatus.COMPLETED);
-
+                        .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, "COMPLETED");
+                
                 if (remainingAssignments.isEmpty()) {
                     vehicle.setStatus(VehicleStatus.AVAILABLE);
                     vehicleRepository.save(vehicle);
                 }
-
+                
                 incidentService.checkIncidentCompletion(incident);
             }
         }
