@@ -54,6 +54,7 @@ useEffect(() => {
   setError('');
 
   try {
+    console.log('Attempting to connect to backend...');
     const response = await fetch("http://localhost:8080/auth/login", {
       method: "POST",
       headers: { 
@@ -128,7 +129,9 @@ useEffect(() => {
   } catch (error) {
     console.error("Login Error:", error);
     if (error.message === 'Failed to fetch') {
-      setError('Cannot connect to server. Please try again later.');
+      setError('Cannot connect to server. Please ensure the backend server is running on http://localhost:8080');
+    } else if (error.name === 'TypeError') {
+      setError('Network error: Please check if the backend server is running and accessible.');
     } else {
       setError('An unexpected error occurred. Please try again.');
     }

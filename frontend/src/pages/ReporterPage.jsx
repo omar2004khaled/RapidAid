@@ -1,7 +1,9 @@
 import React, { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import "../css/ReporterCss.css";
 
 function ReporterPage() {
+    const navigate = useNavigate();
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -31,7 +33,15 @@ function ReporterPage() {
     return (
         <div className="report-container">
             <div className="report-head">
-                <h2>Report an Emergency</h2>
+                <div className="header-content">
+                    <h2>Report an Emergency</h2>
+                    <button 
+                        onClick={() => navigate('/login')}
+                        className="login-btn"
+                    >
+                        Login
+                    </button>
+                </div>
             </div>
             <div className="report-body">
                 <form onSubmit={handleSubmit}>
