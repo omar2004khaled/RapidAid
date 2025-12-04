@@ -1,7 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import DispatcherPage from '../pages/DispatcherPage';
-import { adminAPI } from '../services/api';
+import adminAPI from '../services/adminAPI';
+import incidentAPI from '../services/incidentAPI';
+import vehicleAPI from '../services/vehicleAPI';
+import websocketService from '../services/websocketService';
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -11,27 +14,63 @@ const Dashboard = () => {
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
   const [reporters, setReporters] = useState([]);
   const [newReporter, setNewReporter] = useState({ name: '', phone: '' });
-  const [emergencyUnits, setEmergencyUnits] = useState([
-    { id: 1, type: 'Ambulance', count: 10, status: 'Active' },
-    { id: 2, type: 'Fire Truck', count: 5, status: 'Active' },
-    { id: 3, type: 'Police Car', count: 8, status: 'Active' }
-  ]);
-  const [incidents, setIncidents] = useState([
-    { id: 1, type: 'Medical', location: '123 Main St', status: 'Pending', priority: 'High' },
-    { id: 2, type: 'Fire', location: '456 Oak Ave', status: 'Dispatched', priority: 'Critical' },
-    { id: 3, type: 'Crime', location: '789 Pine Rd', status: 'Resolved', priority: 'Medium' }
-  ]);
+  const [emergencyUnits, setEmergencyUnits] = useState([]);
+  const [incidents, setIncidents] = useState([]);
 
   const [newUnit, setNewUnit] = useState({ type: '', count: 0, location: '' });
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
+  
+  const incidentSubscriptionRef = useRef(null);
+  const vehicleSubscriptionRef = useRef(null);
+
+  const fetchData = async () => {
+    await Promise.all([
+      fetchAdmins(),
+      fetchIncidents(),
+      fetchUnits()
+    ]);
+  };
+
+  useEffect(() => {
+    fetchData();
+    
+    // Connect to WebSocket
+    websocketService.connect(
+      'http://localhost:8080/ws',
+      () => {
+        console.log('[Dashboard] Connected to WebSocket');
+        
+        // Subscribe to incident updates
+        incidentSubscriptionRef.current = websocketService.subscribe('/topic/incidents', (data) => {
+          console.log('[Dashboard] Incident update received:', data);
+          processIncidents(data);
+        });
+        
+        // Subscribe to vehicle updates
+        vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicles', (data) => {
+          console.log('[Dashboard] Vehicle update received:', data);
+          processUnits(data);
+        });
+      },
+      (error) => {
+        console.error('[Dashboard] WebSocket connection error:', error);
+      }
+    );
+    
+    // Cleanup on unmount
+    return () => {
+      if (incidentSubscriptionRef.current) websocketService.unsubscribe(incidentSubscriptionRef.current);
+      if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
+      websocketService.disconnect();
+    };
+  }, []);
 
   useEffect(() => {
     const token = searchParams.get('token');
     if (token) {
       localStorage.setItem('authToken', token);
       const userData = parseJwt(token);
-      console.log('Parsed JWT user data:', userData);
       if (userData) {
         localStorage.setItem('user', JSON.stringify(userData));
         setUserInfo(userData);
@@ -39,27 +78,18 @@ const Dashboard = () => {
     } else {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('authToken');
-      console.log('Stored user:', storedUser);
-      console.log('Stored token:', storedToken);
       
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
-        console.log('Parsed stored user:', parsedUser);
         setUserInfo(parsedUser);
       } else if (storedToken) {
         const userData = parseJwt(storedToken);
-        console.log('Parsed token user data:', userData);
         if (userData) {
           localStorage.setItem('user', JSON.stringify(userData));
           setUserInfo(userData);
         }
       }
     }
-    console.log('Final userInfo:', userInfo);
-    fetchAdmins();
-    fetchIncidents();
-    fetchUnits();
-    fetchReporters();
   }, [searchParams]);
 
   useEffect(() => {
@@ -74,37 +104,46 @@ const Dashboard = () => {
 
   const fetchAdmins = async () => {
     try {
-      const users = await adminAPI.getUsers();
+      const users = await adminAPI.getAllUsers();
       setAdmins(users.filter(user => user.role === 'ADMINISTRATOR'));
     } catch (error) {
       console.error('Error fetching admins:', error);
     }
   };
 
+  const processIncidents = (data) => {
+    const incidentsList = data.content || data;
+    setIncidents(Array.isArray(incidentsList) ? incidentsList : []);
+  };
+
   const fetchIncidents = async () => {
     try {
-      const data = await adminAPI.getIncidents();
-      setIncidents(data);
+      const response = await incidentAPI.getAllIncidents();
+      processIncidents(response);
     } catch (error) {
       console.error('Error fetching incidents:', error);
+      setIncidents([]); // Set empty array on error
     }
+  };
+
+  const processUnits = (availableVehicles) => {
+    const units = availableVehicles.map(vehicle => ({
+      id: vehicle.vehicleId,
+      type: vehicle.vehicleType || vehicle.type || 'Unknown',
+      count: 1,
+      location: vehicle.stationName || 'Unknown Station',
+      status: vehicle.status || 'Active'
+    }));
+    setEmergencyUnits(units);
   };
 
   const fetchUnits = async () => {
     try {
-      const data = await adminAPI.getUnits();
-      setEmergencyUnits(data);
+      const availableVehicles = await vehicleAPI.getVehiclesByStatus('AVAILABLE');
+      processUnits(availableVehicles);
     } catch (error) {
       console.error('Error fetching units:', error);
-    }
-  };
-
-  const fetchReporters = async () => {
-    try {
-      const data = await adminAPI.getReporters();
-      setReporters(data);
-    } catch (error) {
-      console.error('Error fetching reporters:', error);
+      setEmergencyUnits([]);
     }
   };
 
@@ -173,9 +212,11 @@ const Dashboard = () => {
 
   const removeAdmin = async (adminId) => {
     try {
-      await adminAPI.demoteAdmin(adminId);
-      alert('Admin removed successfully!');
-      fetchAdmins();
+      // TODO: Backend endpoint for demoting admin doesn't exist yet
+      // For now, just show a message
+      alert('Admin removal feature is not yet implemented in the backend');
+      // await adminAPI.demoteAdmin(adminId);
+      // fetchAdmins();
     } catch (error) {
       console.error('Error removing admin:', error);
     }
@@ -188,14 +229,15 @@ const Dashboard = () => {
     }
     
     try {
-      await adminAPI.createUnit({
-        type: newUnit.type.trim(),
-        count: newUnit.count,
-        location: newUnit.location.trim()
-      });
-      alert('Unit created successfully!');
-      setNewUnit({ type: '', count: 0, location: '' });
-      fetchUnits();
+      // TODO: Backend endpoint for creating vehicles doesn't exist yet
+      alert('Unit creation feature is not yet implemented in the backend');
+      // await vehicleAPI.createVehicle({
+      //   type: newUnit.type.trim(),
+      //   count: newUnit.count,
+      //   location: newUnit.location.trim()
+      // });
+      // setNewUnit({ type: '', count: 0, location: '' });
+      // fetchUnits();
     } catch (error) {
       console.error('Error adding unit:', error);
       alert(error.message || 'Failed to create unit');
@@ -204,8 +246,10 @@ const Dashboard = () => {
 
   const removeUnit = async (id) => {
     try {
-      await adminAPI.deleteUnit(id);
-      fetchUnits();
+      // TODO: Backend endpoint for deleting vehicles doesn't exist yet
+      alert('Unit removal feature is not yet implemented in the backend');
+      // await vehicleAPI.deleteVehicle(id);
+      // fetchUnits();
     } catch (error) {
       console.error('Error removing unit:', error);
     }
@@ -213,10 +257,11 @@ const Dashboard = () => {
 
   const updateIncidentStatus = async (id, status) => {
     try {
-      await adminAPI.updateIncidentStatus(id, status);
+      await incidentAPI.updateStatus(id, status);
       fetchIncidents();
     } catch (error) {
       console.error('Error updating incident status:', error);
+      alert('Failed to update incident status: ' + error.message);
     }
   };
 

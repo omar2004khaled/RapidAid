@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { Eye, EyeOff } from 'lucide-react';
 import { useLocation } from "react-router-dom";
 import { useEffect } from "react";
-import { authAPI } from '../services/api';
+import authAPI from '../services/authAPI';
 
 
 const Login = () => {
