@@ -1,5 +1,6 @@
 package com.example.auth.service;
 
+import com.example.auth.dto.VehicleRequest;
 import com.example.auth.dto.VehicleResponse;
 import com.example.auth.entity.Assignment;
 import com.example.auth.entity.Incident;
@@ -21,18 +22,19 @@ import java.util.stream.Collectors;
 @Service
 public class VehicleService {
 
-    @Autowired
-    private VehicleMapper vehicleMapper;
-
+    private final VehicleMapper vehicleMapper;
     private final AssignmentRepository assignmentRepository;
     private final VehicleRepository vehicleRepository;
     private final IncidentService incidentService;
 
-    public VehicleService(AssignmentRepository assignmentRepository, VehicleRepository vehicleRepository,
-                         IncidentService incidentService) {
+    public VehicleService(AssignmentRepository assignmentRepository,
+                         VehicleRepository vehicleRepository,
+                         IncidentService incidentService,
+                         VehicleMapper vehicleMapper) {
         this.assignmentRepository = assignmentRepository;
         this.vehicleRepository = vehicleRepository;
         this.incidentService = incidentService;
+        this.vehicleMapper = vehicleMapper;
     }
 
     @Transactional
@@ -43,32 +45,32 @@ public class VehicleService {
         vehicle.setLastLongitude(longitude);
         vehicle.setLastUpdatedTime(LocalDateTime.now());
         vehicleRepository.save(vehicle);
-        
+
         if (latitude == null || longitude == null) return;
-        
+
         List<Assignment> activeAssignments = assignmentRepository
                 .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, "COMPLETED");
-        
+
         for (Assignment assignment : activeAssignments) {
             Incident incident = assignment.getIncident();
             BigDecimal incidentLat = incident.getAddress().getLatitude();
             BigDecimal incidentLng = incident.getAddress().getLongitude();
-            
+
             if (incidentLat != null && incidentLng != null &&
                 latitude.equals(incidentLat) && longitude.equals(incidentLng)) {
-                
+
                 assignment.setAssignmentStatus(AssignmentStatus.COMPLETED);
                 assignment.setCompletedAt(LocalDateTime.now());
                 assignmentRepository.save(assignment);
-                
+
                 List<Assignment> remainingAssignments = assignmentRepository
                         .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, "COMPLETED");
-                
+
                 if (remainingAssignments.isEmpty()) {
                     vehicle.setStatus(VehicleStatus.AVAILABLE);
                     vehicleRepository.save(vehicle);
                 }
-                
+
                 incidentService.checkIncidentCompletion(incident);
             }
         }
@@ -98,4 +100,11 @@ public class VehicleService {
                 .map(vehicleMapper::toResponse)
                 .collect(Collectors.toList());
     }
+
+    public VehicleResponse createVehicle(VehicleRequest vehicleRequest) {
+        Vehicle vehicle = vehicleMapper.toEntity(vehicleRequest);
+        Vehicle savedVehicle = vehicleRepository.save(vehicle);
+        return vehicleMapper.toResponse(savedVehicle);
+    }
+
 }

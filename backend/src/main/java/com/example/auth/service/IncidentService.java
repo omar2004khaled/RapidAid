@@ -19,18 +19,19 @@ import java.util.List;
 @Service
 public class IncidentService {
 
-    @Autowired
-    private IncidentMapper incidentMapper;
-
-    @Autowired
-    private WebSocketNotificationService webSocketNotificationService;
-
+    private final IncidentMapper incidentMapper;
+    private final WebSocketNotificationService webSocketNotificationService;
     private final AssignmentRepository assignmentRepository;
     private final IncidentRepository incidentRepository;
 
-    public IncidentService(AssignmentRepository assignmentRepository, IncidentRepository incidentRepository) {
+    public IncidentService(AssignmentRepository assignmentRepository,
+                          IncidentRepository incidentRepository,
+                          IncidentMapper incidentMapper,
+                          WebSocketNotificationService webSocketNotificationService) {
         this.assignmentRepository = assignmentRepository;
         this.incidentRepository = incidentRepository;
+        this.incidentMapper = incidentMapper;
+        this.webSocketNotificationService = webSocketNotificationService;
     }
 
     @Transactional

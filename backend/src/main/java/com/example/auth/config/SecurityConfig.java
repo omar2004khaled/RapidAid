@@ -34,10 +34,33 @@ public class SecurityConfig {
                         .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**", "/api/public", "/oauth2/**", "/login/oauth2/**", "/api/profiles/**", "/api/locations/**", "/api/company/**", "/ws/**", "/api/incident/**", "/api/assignment/**", "/api/vehicle/**", "/api/user/**", "/*.html", "/static/**", "/**.js", "/**.css")
-                        .permitAll()
+                        .requestMatchers(
+                            "/auth/**",
+                            "/api/public/**",
+                            "/oauth2/**",
+                            "/login/oauth2/**",
+                            "/api/profiles/**",
+                            "/api/locations/**",
+                            "/api/company/**",
+                            "/ws/**",
+                            "/api/incident/**",
+                            "/api/assignment/**",
+                            "/api/vehicle/**",
+                            "/api/user/**",
+                            "/*.html",
+                            "/static/**",
+                            "/**.js",
+                            "/**.css"
+                        ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMINISTRATOR")
                         .anyRequest().authenticated()
+                )
+                .exceptionHandling(exception -> exception
+                        .authenticationEntryPoint((request, response, authException) -> {
+                            response.setStatus(401);
+                            response.setContentType("application/json");
+                            response.getWriter().write("{\"error\": \"Unauthorized\", \"message\": \"" + authException.getMessage() + "\"}");
+                        })
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .successHandler(oAuth2SuccessHandler)

@@ -4,9 +4,9 @@ import com.example.auth.dto.AssignmentRequest;
 import com.example.auth.dto.AssignmentResponse;
 import com.example.auth.entity.Assignment;
 import com.example.auth.entity.Incident;
-import com.example.auth.entity.User;
 import com.example.auth.entity.Vehicle;
 import com.example.auth.enums.AssignmentStatus;
+import com.example.auth.enums.IncidentStatus;
 import com.example.auth.enums.VehicleStatus;
 import com.example.auth.mapper.AssignmentMapper;
 import com.example.auth.repository.AssignmentRepository;
@@ -48,12 +48,12 @@ public class AssignmentService {
         Assignment assignment = assignmentRepository.findById(assignmentId)
                 .orElseThrow(() -> new RuntimeException("Assignment not found"));
 
-        User responder = userRepository.findById(responderId)
-                .orElseThrow(() -> new RuntimeException("Responder not found"));
-
-        if (!assignment.getVehicle().getDriver().getUserId().equals(responderId)) {
-            throw new RuntimeException("Responder is not the driver of this vehicle");
-        }
+//        User responder = userRepository.findById(responderId)
+//                .orElseThrow(() -> new RuntimeException("Responder not found"));
+//
+//        if (!assignment.getVehicle().getDriver().getUserId().equals(responderId)) {
+//            throw new RuntimeException("Responder is not the driver of this vehicle");
+//        }
 
         assignment.setAcceptedAt(LocalDateTime.now());
         assignment.setAssignmentStatus(AssignmentStatus.ENROUTE);
@@ -153,6 +153,30 @@ public class AssignmentService {
     @Transactional
     public AssignmentResponse createAssignment(AssignmentRequest assignmentRequest) {
         Assignment assignment = assignmentMapper.toEntity(assignmentRequest);
+
+        // Fetch and set Incident
+        if (assignmentRequest.getIncidentId() != null) {
+            Incident incident = incidentRepository.findById(assignmentRequest.getIncidentId())
+                    .orElseThrow(() -> new RuntimeException("Incident not found with id: " + assignmentRequest.getIncidentId()));
+
+            if(incident.getLifeCycleStatus() == IncidentStatus.RESOLVED)
+                throw new RuntimeException("Cannot assign a resolved incident with id: " + assignmentRequest.getIncidentId());
+            assignment.setIncident(incident);
+        }
+
+        // Fetch and set Vehicle
+        if (assignmentRequest.getVehicleId() != null) {
+            Vehicle vehicle = vehicleRepository.findVehicleById(assignmentRequest.getVehicleId())
+                    .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + assignmentRequest.getVehicleId()));
+            assignment.setVehicle(vehicle);
+        }
+
+        // Fetch and set AssignedBy User
+        if (assignmentRequest.getAssignedByUserId() != null) {
+            assignment.setAssignedBy(userRepository.findById(assignmentRequest.getAssignedByUserId().longValue())
+                    .orElseThrow(() -> new RuntimeException("User not found with id: " + assignmentRequest.getAssignedByUserId())));
+        }
+
         Assignment savedAssignment = assignmentRepository.save(assignment);
 
         // Update incident status and assigned time
