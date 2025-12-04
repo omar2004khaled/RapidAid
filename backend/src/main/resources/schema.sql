@@ -48,9 +48,6 @@ CREATE TABLE User (
 );
 
 -- ===================================
--- VEHICLE TABLE
--- ===================================
--- ===================================
 -- STATION TABLE
 -- ===================================
 CREATE TABLE Station (
@@ -64,19 +61,18 @@ CREATE TABLE Station (
     FOREIGN KEY(address_id) REFERENCES Address(address_id)
 );
 
+-- ===================================
+-- VEHICLE TABLE
+-- ===================================
 CREATE TABLE Vehicle (
     vehicle_id INT AUTO_INCREMENT PRIMARY KEY,
     registration_number VARCHAR(50) UNIQUE,
     vehicle_type ENUM('AMBULANCE','POLICE_CAR','FIRE_TRUCK'),
-    driver_user_id INT,
-    station_id INT,
     capacity INT,
     status ENUM('AVAILABLE','ON_ROUTE','AT_SERVICE_CENTER') DEFAULT 'AVAILABLE',
     last_latitude DECIMAL(10,7),
     last_longitude DECIMAL(10,7),
-    last_updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    FOREIGN KEY(driver_user_id) REFERENCES User(user_id),
-    FOREIGN KEY(station_id) REFERENCES Station(station_id)
+    last_updated_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 );
 
 -- ===================================

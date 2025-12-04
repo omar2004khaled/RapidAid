@@ -33,12 +33,4 @@ public class WebSocketNotificationService {
         messagingTemplate.convertAndSend("/topic/incidents", updatedIncidents);
         logger.info("Sending reported incident update notification via WebSocket.");
     }
-
-
-
-
-
-
-
-
 }

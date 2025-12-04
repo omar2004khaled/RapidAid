@@ -19,13 +19,25 @@ public interface AssignmentMapper {
     @Mapping(target = "assignedByUserName", source = "assignedBy.fullName")
     AssignmentResponse toResponse(Assignment assignment);
 
-    @Mapping(target = "incident.incidentId", source = "incidentId")
-    @Mapping(target = "vehicle.vehicleId", source = "vehicleId")
-    @Mapping(target = "assignedBy.userId", source = "assignedByUserId")
+    @Mapping(target = "incident", ignore = true)
+    @Mapping(target = "vehicle", ignore = true)
+    @Mapping(target = "assignedBy", ignore = true)
+    @Mapping(target = "assignmentId", ignore = true)
+    @Mapping(target = "assignedAt", ignore = true)
+    @Mapping(target = "acceptedAt", ignore = true)
+    @Mapping(target = "arrivedAt", ignore = true)
+    @Mapping(target = "completedAt", ignore = true)
+    @Mapping(target = "preferredVehicleTypes", ignore = true)
     Assignment toEntity(AssignmentRequest request);
 
-    @Mapping(target = "incident.incidentId", source = "incidentId")
-    @Mapping(target = "vehicle.vehicleId", source = "vehicleId")
-    @Mapping(target = "assignedBy.userId", source = "assignedByUserId")
+    @Mapping(target = "incident", ignore = true)
+    @Mapping(target = "vehicle", ignore = true)
+    @Mapping(target = "assignedBy", ignore = true)
+    @Mapping(target = "assignmentId", ignore = true)
+    @Mapping(target = "assignedAt", ignore = true)
+    @Mapping(target = "acceptedAt", ignore = true)
+    @Mapping(target = "arrivedAt", ignore = true)
+    @Mapping(target = "completedAt", ignore = true)
+    @Mapping(target = "preferredVehicleTypes", ignore = true)
     void updateEntityFromRequest(AssignmentRequest request, @MappingTarget Assignment assignment);
 }

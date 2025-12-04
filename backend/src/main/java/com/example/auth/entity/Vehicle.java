@@ -30,10 +30,6 @@ public class Vehicle {
     @Column(name = "vehicle_type")
     private VehicleType vehicleType;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "driver_user_id", referencedColumnName = "user_id")
-    private User driver;
-
     @Column(name = "capacity")
     private Integer capacity;
 

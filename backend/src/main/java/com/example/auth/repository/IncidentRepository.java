@@ -15,7 +15,7 @@ public interface IncidentRepository extends JpaRepository<Incident, Integer> {
                         SELECT *
                         FROM incident
                         WHERE life_cycle_status = 'ACCEPTED'
-                        ORDER BY severity_level DESC, time_reported ASC LIMIT
+                        ORDER BY severity_level DESC, time_reported ASC
                     """, nativeQuery = true)
     List<Incident> findAllAcceptedIncidentsOrderedBySeverityLevelAndTimeReported();
 
