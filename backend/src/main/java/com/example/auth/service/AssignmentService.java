@@ -168,6 +168,8 @@ public class AssignmentService {
         if (assignmentRequest.getVehicleId() != null) {
             Vehicle vehicle = vehicleRepository.findVehicleById(assignmentRequest.getVehicleId())
                     .orElseThrow(() -> new RuntimeException("Vehicle not found with id: " + assignmentRequest.getVehicleId()));
+            if(vehicle.getStatus() != VehicleStatus.AVAILABLE)
+                throw new RuntimeException("Vehicle with id: " + assignmentRequest.getVehicleId() + " is not available for assignment");
             assignment.setVehicle(vehicle);
         }
 

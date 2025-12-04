@@ -9,7 +9,6 @@ import com.example.auth.enums.IncidentStatus;
 import com.example.auth.mapper.IncidentMapper;
 import com.example.auth.repository.AssignmentRepository;
 import com.example.auth.repository.IncidentRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
