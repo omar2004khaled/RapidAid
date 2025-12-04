@@ -369,8 +369,6 @@ const SignUp = () => {
                     } bg-gray-800 focus:bg-gray-700 focus:border-red-500 h-12 px-4 text-base font-normal leading-normal`}
                   >
                     <option value="">Select role</option>
-                    <option value="DISPATCHER">Dispatcher</option>
-                    <option value="RESPONDER">Responder</option>
                     <option value="ADMINISTRATOR">Administrator</option>
                   </select>
                   {errors.role && (
