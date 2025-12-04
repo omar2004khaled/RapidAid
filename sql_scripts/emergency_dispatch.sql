@@ -112,7 +112,7 @@ CREATE TABLE Incident (
     time_reported TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     time_assigned TIMESTAMP NULL,
     time_resolved TIMESTAMP NULL,
-    life_cycle_status ENUM('reported','assigned','resolved','cancelled') DEFAULT 'reported',
+    life_cycle_status ENUM('REPORTED','ACCEPTED','ASSIGNED','RESOLVED') DEFAULT 'REPORTED',
     FOREIGN KEY(reported_by_user_id) REFERENCES User(user_id),
     FOREIGN KEY(address_id) REFERENCES Address(address_id)
 );
