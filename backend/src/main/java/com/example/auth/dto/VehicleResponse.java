@@ -17,8 +17,6 @@ public class VehicleResponse {
     private Integer vehicleId;
     private String registrationNumber;
     private VehicleType vehicleType;
-    private Integer driverUserId;
-    private String driverName;
     private Integer capacity;
     private VehicleStatus status;
     private BigDecimal lastLatitude;
