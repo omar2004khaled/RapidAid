@@ -7,6 +7,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
+import com.example.auth.enums.UserStatus;
 
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -20,4 +22,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
                     WHERE user_id = :userId
                                         """, nativeQuery = true)
     void deleteUserById(Long userId);
+
+    List<User> findByStatus(UserStatus status);
 }

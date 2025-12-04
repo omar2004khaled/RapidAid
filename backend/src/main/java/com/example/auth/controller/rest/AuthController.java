@@ -51,9 +51,13 @@ public class AuthController {
     public ResponseEntity<?> register(@Valid @RequestBody RegisterRequest request) {
         try {
             authService.register(request);
-            return ResponseEntity.ok().body("Registration successful. Check console for verification email.");
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", "Registration successful. Please check your email for verification and wait for admin approval.");
+            return ResponseEntity.ok().body(response);
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", ex.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         }
     }
 
@@ -89,7 +93,9 @@ public class AuthController {
 
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.status(401).body(ex.getMessage());
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", ex.getMessage());
+            return ResponseEntity.status(401).body(errorResponse);
         }
     }
 
@@ -113,9 +119,13 @@ public class AuthController {
     public ResponseEntity<?> forgotPassword(@Valid @RequestBody PasswordResetRequest request) {
         try {
             passwordResetService.createPasswordResetToken(request.getEmail());
-            return ResponseEntity.ok("If your email exists, a reset link has been sent.");
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", "If your email exists, a reset link has been sent.");
+            return ResponseEntity.ok(response);
         } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Server error. Try again.");
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", "Server error. Try again.");
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 
@@ -140,11 +150,17 @@ public class AuthController {
     public ResponseEntity<?> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         try {
             passwordResetService.resetPassword(request.getToken(), request.getNewPassword());
-            return ResponseEntity.ok("Password reset successful.");
+            java.util.Map<String, String> response = new java.util.HashMap<>();
+            response.put("message", "Password reset successful.");
+            return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", ex.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Server error.");
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", "Server error.");
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 
@@ -174,9 +190,13 @@ public class AuthController {
             AuthResponse response = new AuthResponse(token, request.getRole().toString(), email);
             return ResponseEntity.ok(response);
         } catch (IllegalArgumentException ex) {
-            return ResponseEntity.badRequest().body(ex.getMessage());
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", ex.getMessage());
+            return ResponseEntity.badRequest().body(errorResponse);
         } catch (Exception ex) {
-            return ResponseEntity.status(500).body("Server error.");
+            java.util.Map<String, String> errorResponse = new java.util.HashMap<>();
+            errorResponse.put("error", "Server error occurred");
+            return ResponseEntity.status(500).body(errorResponse);
         }
     }
 

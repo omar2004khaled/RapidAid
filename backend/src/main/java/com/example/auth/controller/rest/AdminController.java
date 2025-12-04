@@ -5,7 +5,7 @@ import com.example.auth.dto.IncidentResponse;
 import com.example.auth.entity.Incident;
 import com.example.auth.entity.User;
 import com.example.auth.enums.UserRole;
-import com.example.auth.mapper.IncidentMapper;
+import com.example.auth.service.UserService;
 import com.example.auth.repository.IncidentRepository;
 import com.example.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -41,14 +41,13 @@ public class AdminController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final IncidentRepository incidentRepository;
-    
-    @Autowired
-    private IncidentMapper incidentMapper;
+    private final UserService userService;
 
-    public AdminController(UserRepository userRepository, PasswordEncoder passwordEncoder, IncidentRepository incidentRepository) {
+    public AdminController(UserRepository userRepository, PasswordEncoder passwordEncoder, IncidentRepository incidentRepository, UserService userService) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.incidentRepository = incidentRepository;
+        this.userService = userService;
     }
 
     @Operation(
@@ -68,7 +67,9 @@ public class AdminController {
     })
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers() {
-        var users = userRepository.findAll();
+        var users = userRepository.findAll().stream()
+                .filter(user -> com.example.auth.enums.UserStatus.ACTIVE.equals(user.getStatus()))
+                .collect(Collectors.toList());
         return ResponseEntity.ok(users);
     }
 
@@ -531,6 +532,46 @@ public class AdminController {
         } catch (Exception e) {
             Map<String, String> errorResponse = new HashMap<>();
             errorResponse.put("error", "Failed to update unit");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @GetMapping("/pending-users")
+    public ResponseEntity<?> getPendingUsers() {
+        try {
+            List<User> pendingUsers = userService.getPendingUsers();
+            return ResponseEntity.ok(pendingUsers);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to fetch pending users");
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/approve-user/{userId}")
+    public ResponseEntity<?> approveUser(@PathVariable Long userId) {
+        try {
+            userService.approveUser(userId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User approved successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to approve user: " + e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
+    }
+
+    @PostMapping("/reject-user/{userId}")
+    public ResponseEntity<?> rejectUser(@PathVariable Long userId) {
+        try {
+            userService.rejectUser(userId);
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "User rejected successfully");
+            return ResponseEntity.ok(response);
+        } catch (Exception e) {
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to reject user: " + e.getMessage());
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
         }
     }

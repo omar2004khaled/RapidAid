@@ -16,6 +16,7 @@ const Dashboard = () => {
   const [newReporter, setNewReporter] = useState({ name: '', phone: '' });
   const [emergencyUnits, setEmergencyUnits] = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [pendingUsers, setPendingUsers] = useState([]);
 
   const [newUnit, setNewUnit] = useState({ type: '', count: 0, location: '' });
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
@@ -28,7 +29,8 @@ const Dashboard = () => {
     await Promise.all([
       fetchAdmins(),
       fetchIncidents(),
-      fetchUnits()
+      fetchUnits(),
+      fetchPendingUsers()
     ]);
   };
 
@@ -265,6 +267,39 @@ const Dashboard = () => {
     }
   };
 
+  const fetchPendingUsers = async () => {
+    try {
+      const response = await adminAPI.getPendingUsers();
+      setPendingUsers(response);
+    } catch (error) {
+      console.error('Error fetching pending users:', error);
+      setPendingUsers([]);
+    }
+  };
+
+  const approveUser = async (userId) => {
+    try {
+      await adminAPI.approveUser(userId);
+      alert('User approved successfully!');
+      fetchPendingUsers();
+      fetchAdmins(); // Refresh admin list to show newly approved user
+    } catch (error) {
+      console.error('Error approving user:', error);
+      alert('Failed to approve user: ' + error.message);
+    }
+  };
+
+  const rejectUser = async (userId) => {
+    try {
+      await adminAPI.rejectUser(userId);
+      alert('User rejected successfully!');
+      fetchPendingUsers();
+    } catch (error) {
+      console.error('Error rejecting user:', error);
+      alert('Failed to reject user: ' + error.message);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -320,7 +355,7 @@ const Dashboard = () => {
             </div>
           </div>
           <nav className="flex space-x-8">
-            {['incidents', 'dispatch', 'admins', 'units'].map(tab => (
+            {['incidents', 'dispatch', 'admins', 'pending', 'units'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -330,7 +365,7 @@ const Dashboard = () => {
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
-                {tab === 'units' ? 'Emergency Units' : tab === 'reporters' ? 'Reporters' : tab}
+                {tab === 'units' ? 'Emergency Units' : tab === 'pending' ? 'Pending Users' : tab === 'reporters' ? 'Reporters' : tab}
               </button>
             ))}
           </nav>
@@ -397,6 +432,56 @@ const Dashboard = () => {
         )}
 
         {activeTab === 'dispatch' && <DispatcherPage />}
+
+        {activeTab === 'pending' && (
+          <div className="bg-white rounded-lg shadow p-6">
+            <h2 className="text-xl font-semibold mb-4">Pending User Registrations</h2>
+            <div className="overflow-x-auto">
+              <table className="min-w-full divide-y divide-gray-200">
+                <thead className="bg-gray-50">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registered</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="bg-white divide-y divide-gray-200">
+                  {pendingUsers.map(user => (
+                    <tr key={user.userId}>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.fullName}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.phone}</td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                        {new Date(user.createdAt).toLocaleDateString()}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
+                        <button 
+                          onClick={() => approveUser(user.userId)}
+                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
+                        >
+                          Approve
+                        </button>
+                        <button 
+                          onClick={() => rejectUser(user.userId)}
+                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
+                        >
+                          Reject
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              {pendingUsers.length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  No pending user registrations
+                </div>
+              )}
+            </div>
+          </div>
+        )}
 
         {activeTab === 'admins' && (
           <div className="bg-white rounded-lg shadow p-6">
