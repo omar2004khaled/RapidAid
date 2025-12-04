@@ -10,8 +10,6 @@ import com.example.auth.mapper.IncidentMapper;
 import com.example.auth.repository.AssignmentRepository;
 import com.example.auth.repository.IncidentRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +23,7 @@ public class IncidentService {
     private IncidentMapper incidentMapper;
 
     @Autowired
-    WebSocketNotificationService webSocketNotificationService;
+    private WebSocketNotificationService webSocketNotificationService;
 
     private final AssignmentRepository assignmentRepository;
     private final IncidentRepository incidentRepository;
@@ -49,9 +47,35 @@ public class IncidentService {
     }
 
     @Transactional
-    public Page<IncidentResponse> getReportedIncidentsOrdered(Pageable pageable) {
-        Page<Incident> incidents =  incidentRepository.findAllReportedIncidentsOrderedBySeverityLevelAndTimeReported(pageable);
-        return incidents.map(incidentMapper::toResponse);
+    public List<IncidentResponse> getAcceptedIncidentsOrdered() {
+        List<Incident> incidents =  incidentRepository.findAllAcceptedIncidentsOrderedBySeverityLevelAndTimeReported();
+        return incidents.stream()
+                        .map(incidentMapper::toResponse)
+                        .toList();
+    }
+
+    @Transactional
+    public List<IncidentResponse> getResolvedIncidents() {
+        List <Incident> incidents =  incidentRepository.findAllResolvedIncidents();
+        return incidents.stream()
+                        .map(incidentMapper::toResponse)
+                        .toList();
+    }
+
+    @Transactional
+    public List<IncidentResponse> getReportedIncidents() {
+        List<Incident> incidents =  incidentRepository.findAllReportedIncidents();
+        return incidents.stream()
+                        .map(incidentMapper::toResponse)
+                        .toList();
+    }
+
+    @Transactional
+    public List<IncidentResponse> getAllIncidents() {
+        List<Incident> incidents =  incidentRepository.findAll();
+        return incidents.stream()
+                        .map(incidentMapper::toResponse)
+                        .toList();
     }
 
     @Transactional
@@ -62,7 +86,7 @@ public class IncidentService {
         Incident savedIncident = incidentRepository.save(incident);
 
         // Notify via WebSocket
-        webSocketNotificationService.notifyIncidentUpdate();
+        webSocketNotificationService.notifyReportedIncidentUpdate();
 
         return incidentMapper.toResponse(savedIncident);
     }
@@ -82,36 +106,65 @@ public class IncidentService {
         incident.setSeverityLevel(priority);
         Incident updatedIncident = incidentRepository.save(incident);
 
-        webSocketNotificationService.notifyIncidentUpdate();
+        if (incident.getLifeCycleStatus() == IncidentStatus.ACCEPTED)
+            webSocketNotificationService.notifyAcceptedIncidentUpdate();
+        else
+            webSocketNotificationService.notifyReportedIncidentUpdate();
+
         return incidentMapper.toResponse(updatedIncident);
     }
 
     @Transactional
-    public IncidentResponse updateStatus(Integer incidentId, IncidentStatus status) {
+    public IncidentResponse updateToAccepted(Integer incidentId) {
         Incident incident = incidentRepository.findIncidentById(incidentId)
                 .orElseThrow(() -> new RuntimeException("Incident not found with id: " + incidentId));
 
-        incident.setLifeCycleStatus(status);
+        final IncidentStatus previousStatus = incident.getLifeCycleStatus();
 
-        if (status == IncidentStatus.RESOLVED) {
-            incident.setTimeResolved(LocalDateTime.now());
-        }
+        /* Quick return if already accepted */
+        if (previousStatus == IncidentStatus.ACCEPTED)
+            return incidentMapper.toResponse(incident);
 
+        // Update status to ACCEPTED
+        incident.setLifeCycleStatus(IncidentStatus.ACCEPTED);
         Incident updatedIncident = incidentRepository.save(incident);
-        webSocketNotificationService.notifyIncidentUpdate();
+
+        // Update notifications
+        if(previousStatus != IncidentStatus.REPORTED)
+            webSocketNotificationService.notifyReportedIncidentUpdate();
+        webSocketNotificationService.notifyAcceptedIncidentUpdate();
+
         return incidentMapper.toResponse(updatedIncident);
     }
 
     @Transactional
-    public IncidentResponse cancelIncident(Integer incidentId) {
+    public IncidentResponse updateToResolved(Integer incidentId) {
         Incident incident = incidentRepository.findIncidentById(incidentId)
                 .orElseThrow(() -> new RuntimeException("Incident not found with id: " + incidentId));
 
-        incident.setLifeCycleStatus(IncidentStatus.CANCELLED);
-        Incident cancelledIncident = incidentRepository.save(incident);
+        final IncidentStatus previousStatus = incident.getLifeCycleStatus();
 
-        webSocketNotificationService.notifyIncidentUpdate();
-        return incidentMapper.toResponse(cancelledIncident);
+        /* Quick return if already resolved */
+        if (previousStatus == IncidentStatus.RESOLVED)
+            return incidentMapper.toResponse(incident);
+
+        // Update status to RESOLVED
+        incident.setLifeCycleStatus(IncidentStatus.RESOLVED);
+        incident.setTimeResolved(LocalDateTime.now());
+        Incident updatedIncident = incidentRepository.save(incident);
+
+        return incidentMapper.toResponse(updatedIncident);
     }
 
+    @Transactional
+    public Boolean cancelIncident(Integer incidentId) {
+        Incident incident = incidentRepository.findIncidentById(incidentId)
+                .orElseThrow(() -> new RuntimeException("Incident not found with id: " + incidentId));
+
+        Boolean present = incidentRepository.findIncidentById(incidentId).isPresent();
+        if (present)
+            incidentRepository.deleteById(incidentId);
+
+        return present;
+    }
 }

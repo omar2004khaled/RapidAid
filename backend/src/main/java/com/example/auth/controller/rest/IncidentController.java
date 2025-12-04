@@ -2,13 +2,12 @@ package com.example.auth.controller.rest;
 
 import com.example.auth.dto.IncidentRequest;
 import com.example.auth.dto.IncidentResponse;
-import com.example.auth.enums.IncidentStatus;
 import com.example.auth.service.IncidentService;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/incident")
@@ -17,12 +16,27 @@ public class IncidentController {
     @Autowired
     private IncidentService incidentService;
 
-    @GetMapping("/get-reported")
-    public ResponseEntity<Page<IncidentResponse>> getReportedIncidents(
-            @RequestParam(defaultValue = "0") Integer page,
-            @RequestParam(defaultValue = "10") Integer size
-    ) {
-        Page<IncidentResponse> incidents = incidentService.getReportedIncidentsOrdered(PageRequest.of(page, size));
+    @GetMapping("/accepted-incidents")
+    public ResponseEntity<List<IncidentResponse>> getReportedIncidents() {
+        List<IncidentResponse> incidents = incidentService.getAcceptedIncidentsOrdered();
+        return ResponseEntity.ok(incidents);
+    }
+
+    @GetMapping("/reported-incidents")
+    public ResponseEntity<List<IncidentResponse>> getAcceptedIncidents() {
+        List<IncidentResponse> incidents = incidentService.getReportedIncidents();
+        return ResponseEntity.ok(incidents);
+    }
+
+    @GetMapping("/all-incidents")
+    public ResponseEntity<List<IncidentResponse>> getAllIncidents() {
+        List<IncidentResponse> incidents = incidentService.getAllIncidents();
+        return ResponseEntity.ok(incidents);
+    }
+
+    @GetMapping("/resolved-incidents")
+    public ResponseEntity<List<IncidentResponse>> getResolvedIncidents() {
+        List<IncidentResponse> incidents = incidentService.getResolvedIncidents();
         return ResponseEntity.ok(incidents);
     }
 
@@ -47,19 +61,22 @@ public class IncidentController {
         return ResponseEntity.ok(updatedIncident);
     }
 
-    @PutMapping("/update-status")
-    public ResponseEntity<IncidentResponse> updateStatus(
-            @RequestParam Integer incidentId,
-            @RequestParam IncidentStatus status
-    ) {
-        IncidentResponse updatedIncident = incidentService.updateStatus(incidentId, status);
+    @PutMapping("/update-to-accepted")
+    public ResponseEntity<IncidentResponse> updateToAccepted(@RequestParam Integer incidentId) {
+        IncidentResponse updatedIncident = incidentService.updateToAccepted(incidentId);
+        return ResponseEntity.ok(updatedIncident);
+    }
+
+    @PutMapping("/update-to-resolved")
+    public ResponseEntity<IncidentResponse> updateToResolved(@RequestParam Integer incidentId) {
+        IncidentResponse updatedIncident = incidentService.updateToResolved(incidentId);
         return ResponseEntity.ok(updatedIncident);
     }
 
     @PutMapping("/cancel/{id}")
-    public ResponseEntity<IncidentResponse> cancelIncident(@PathVariable Integer id) {
-        IncidentResponse cancelledIncident = incidentService.cancelIncident(id);
-        return ResponseEntity.ok(cancelledIncident);
+    public ResponseEntity<?> cancelIncident(@PathVariable Integer id) {
+        Boolean cancelStatus = incidentService.cancelIncident(id);
+        return ResponseEntity.ok(cancelStatus);
     }
 
 }

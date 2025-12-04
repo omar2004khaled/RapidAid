@@ -1,12 +1,11 @@
 package com.example.auth.repository;
 
 import com.example.auth.entity.Incident;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.Optional;
 
 @Repository
@@ -15,10 +14,25 @@ public interface IncidentRepository extends JpaRepository<Incident, Integer> {
     @Query(value = """
                         SELECT *
                         FROM incident
-                        WHERE life_cycle_status = 'REPORTED'
-                        ORDER BY severity_level DESC, time_reported ASC LIMIT :#{#pageable.pageSize} OFFSET :#{#pageable.offset}
+                        WHERE life_cycle_status = 'ACCEPTED'
+                        ORDER BY severity_level DESC, time_reported ASC LIMIT
                     """, nativeQuery = true)
-    Page<Incident> findAllReportedIncidentsOrderedBySeverityLevelAndTimeReported(Pageable pageable);
+    List<Incident> findAllAcceptedIncidentsOrderedBySeverityLevelAndTimeReported();
+
+    @Query (value = """
+                    SELECT *
+                    FROM incident
+                    WHERE life_cycle_status = 'RESOLVED'
+                                        """, nativeQuery = true)
+    List<Incident> findAllResolvedIncidents();
+
+    @Query (value = """
+                    SELECT *
+                    FROM incident
+                    WHERE life_cycle_status = 'REPORTED'
+                                        """, nativeQuery = true)
+    List<Incident> findAllReportedIncidents();
+
 
     @Query(value = """
                     SELECT *

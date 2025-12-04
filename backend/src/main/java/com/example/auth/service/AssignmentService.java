@@ -166,7 +166,7 @@ public class AssignmentService {
         vehicleRepository.save(vehicle);
 
         // Notify via WebSocket
-        webSocketNotificationService.notifyIncidentUpdate();
+        webSocketNotificationService.notifyAcceptedIncidentUpdate();
 
         // Return the saved assignment as response
         return assignmentMapper.toResponse(savedAssignment);
