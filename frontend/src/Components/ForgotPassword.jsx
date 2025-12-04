@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { ArrowLeft, Mail } from 'lucide-react';
+import authAPI from '../services/authAPI';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -14,53 +15,11 @@ const ForgotPassword = () => {
     setError('');
 
     try {
-      const response = await fetch("http://localhost:8080/auth/forgot-password", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        mode: 'cors',
-        body: JSON.stringify({
-          email: email.toLowerCase().trim()
-        })
-      });
-
-      const responseText = await response.text();
-      let data;
-      
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          data = { message: responseText };
-        }
-      } else {
-        data = { message: responseText };
-      }
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to send reset link. Please try again.';
-        
-        if (data && typeof data.message === 'string') {
-          errorMessage = data.message;
-        } else if (responseText && typeof responseText === 'string') {
-          errorMessage = responseText;
-        }
-
-        setError(errorMessage);
-        return;
-      }
-
+      await authAPI.forgotPassword(email.toLowerCase().trim());
       setSuccess(true);
     } catch (error) {
       console.error("Forgot Password Error:", error);
-      if (error.message === 'Failed to fetch') {
-        setError('Cannot connect to server. Please try again later.');
-      } else {
-        setError('An unexpected error occurred. Please try again.');
-      }
+      setError(error.message || 'Failed to send reset link. Please try again.');
     } finally {
       setLoading(false);
     }

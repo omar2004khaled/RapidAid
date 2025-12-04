@@ -1,9 +1,11 @@
 package com.example.auth.controller.rest;
 
 import com.example.auth.dto.CreateAdminRequest;
+import com.example.auth.dto.IncidentResponse;
 import com.example.auth.entity.Incident;
 import com.example.auth.entity.User;
 import com.example.auth.enums.UserRole;
+import com.example.auth.mapper.IncidentMapper;
 import com.example.auth.repository.IncidentRepository;
 import com.example.auth.repository.UserRepository;
 import io.swagger.v3.oas.annotations.Operation;
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -26,6 +29,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/admin")
@@ -37,6 +41,9 @@ public class AdminController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final IncidentRepository incidentRepository;
+    
+    @Autowired
+    private IncidentMapper incidentMapper;
 
     public AdminController(UserRepository userRepository, PasswordEncoder passwordEncoder, IncidentRepository incidentRepository) {
         this.userRepository = userRepository;

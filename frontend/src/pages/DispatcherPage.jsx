@@ -1,25 +1,127 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "../css/DispatcherCss.css";
+import incidentAPI from '../services/incidentAPI';
+import vehicleAPI from '../services/vehicleAPI';
+import websocketService from '../services/websocketService';
 
 function DispatcherPage() {
-    const [vehicle_inventory, setVehicle_inventory] = useState([
-        // Sample vehicle data
-        { id: 1, type: 'Ambulance', inventory: '10' },
-        { id: 2, type: 'Fire Truck', inventory: '5' },
-        { id: 3, type: 'Police Car', inventory: '8' },
-    ]);
-    const [emergencyBoard, setEmergencyBoard] = useState([
-        // Sample emergency data
-        { id: 1, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
-        { id: 2, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
-        { id: 3, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
-        { id: 4, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
-        { id: 5, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
-        { id: 6, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
-        { id: 7, type: 'Medical', location: '123 Main St', des:"adawadaw", state: 'Very important', police: 0},
-        { id: 8, type: 'Fire', location: '456 Oak Ave',des:"adawdaw" , state: 'Med',ambulance: 0 },
-        { id: 9, type: 'Crime', location: '789 Pine Rd', des:"adawdaw", state: 'Not important',fire: 0},
-    ]);
+    const [vehicle_inventory, setVehicle_inventory] = useState([]);
+    const [emergencyBoard, setEmergencyBoard] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState('');
+    
+    const incidentSubscriptionRef = useRef(null);
+    const vehicleSubscriptionRef = useRef(null);
+
+    const fetchData = async () => {
+        try {
+            setLoading(true);
+            const [incidentsData, availableVehicles] = await Promise.all([
+                incidentAPI.getAllIncidents(),
+                vehicleAPI.getVehiclesByStatus('AVAILABLE')
+            ]);
+            
+            processIncidents(incidentsData);
+            processVehicles(availableVehicles);
+            setError('');
+        } catch (err) {
+            console.error('Error fetching dispatcher data:', err);
+            setError('Failed to load data. ' + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const processVehicles = (vehicles) => {
+        // Group vehicles by type and count them for inventory display
+        const vehicleGroups = vehicles.reduce((acc, vehicle) => {
+            const type = vehicle.vehicleType || vehicle.type || 'Unknown';
+            if (!acc[type]) {
+                acc[type] = [];
+            }
+            acc[type].push(vehicle);
+            return acc;
+        }, {});
+        
+        const transformedUnits = Object.entries(vehicleGroups).map(([type, vehicles]) => ({
+            id: type,
+            type: type,
+            inventory: String(vehicles.length)
+        }));
+        setVehicle_inventory(transformedUnits);
+    };
+
+    const processIncidents = (incidentsData) => {
+        // Extract incidents from paginated response and filter only active incidents
+        const incidents = incidentsData.content || incidentsData;
+        const activeIncidents = incidents.filter(incident => 
+            incident.lifeCycleStatus === 'REPORTED' || 
+            incident.lifeCycleStatus === 'ASSIGNED'
+        );
+        
+        setEmergencyBoard(prevBoard => {
+            return activeIncidents.map(incident => {
+                // Check if we already have this incident in state
+                const existing = prevBoard.find(e => e.id === incident.incidentId);
+                
+                return {
+                    id: incident.incidentId,
+                    type: incident.incidentType,
+                    location: incident.address ? 
+                        `${incident.address.street}, ${incident.address.city}` : 
+                        'Location not specified',
+                    des: 'Emergency incident',
+                    state: getPriorityLabel(incident.severityLevel),
+                    status: incident.lifeCycleStatus,
+                    // Preserve local counts if they exist, otherwise 0
+                    police: existing ? existing.police : 0,
+                    fire: existing ? existing.fire : 0,
+                    ambulance: existing ? existing.ambulance : 0
+                };
+            });
+        });
+    };
+
+    useEffect(() => {
+        fetchData();
+        
+        // Connect to WebSocket (will use existing connection if already connected)
+        websocketService.connect(
+            'http://localhost:8080/ws',
+            () => {
+                console.log('[Dispatcher] Connected to WebSocket');
+                
+                // Subscribe to incident updates
+                incidentSubscriptionRef.current = websocketService.subscribe('/topic/incidents', (data) => {
+                    console.log('[Dispatcher] Incident update received:', data);
+                    processIncidents(data);
+                });
+                
+                // Subscribe to vehicle updates
+                vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicles', (data) => {
+                    console.log('[Dispatcher] Vehicle update received:', data);
+                    processVehicles(data);
+                });
+            },
+            (error) => {
+                console.error('[Dispatcher] WebSocket connection error:', error);
+            }
+        );
+        
+        // Don't disconnect on unmount since Dashboard manages the connection
+        return () => {
+            // Unsubscribe from topics when component unmounts
+            if (incidentSubscriptionRef.current) websocketService.unsubscribe(incidentSubscriptionRef.current);
+            if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
+        };
+    }, []);
+    
+    const getPriorityLabel = (level) => {
+        if (level >= 4) return 'Critical';
+        if (level >= 3) return 'High';
+        if (level >= 2) return 'Medium';
+        return 'Low';
+    };
 
     const getVehicleTypeMapping = (vehicleType) => {
         const mapping = {
@@ -63,12 +165,48 @@ function DispatcherPage() {
         }));
     };
 
-    const handleDispatch = (emergency) => {
-        console.log('Dispatching:', emergency);
-        alert(`Dispatching to ${emergency.location}:\n- Police: ${emergency.police}\n- Fire: ${emergency.fire}\n- Ambulance: ${emergency.ambulance}`);
+    const handleDispatch = async (emergency) => {
+        try {
+            const totalUnits = emergency.police + emergency.fire + emergency.ambulance;
+            if (totalUnits === 0) {
+                alert('Please assign at least one unit before dispatching.');
+                return;
+            }
+            
+            // TODO: Implement actual dispatch logic (assigning specific vehicles)
+            // For now, we just update the status to ACCEPTED as a placeholder
+            await incidentAPI.updateToAccepted(emergency.id);
+            
+            alert(`Successfully dispatched to ${emergency.location}:\n- Police: ${emergency.police}\n- Fire: ${emergency.fire}\n- Ambulance: ${emergency.ambulance}`);
+            
+            // Refresh data
+            fetchData();
+        } catch (err) {
+            console.error('Error dispatching:', err);
+            alert('Failed to dispatch: ' + err.message);
+        }
     };
+  if (loading && emergencyBoard.length === 0) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-gray-600">Loading dispatcher data...</div>
+      </div>
+    );
+  }
+
   return (
     <div>
+        {error && (
+            <div className="p-4 bg-red-50 border border-red-200 rounded-lg m-4">
+                <p className="text-sm text-red-700">{error}</p>
+                <button 
+                    onClick={fetchData}
+                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                >
+                    Retry
+                </button>
+            </div>
+        )}
         <div className="dispatcher-content">
             <div className="vehicle-inventory">
                 <h2>Vehicle Inventory</h2>

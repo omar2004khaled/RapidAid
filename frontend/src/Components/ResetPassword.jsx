@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { Eye, EyeOff, Lock } from 'lucide-react';
+import authAPI from '../services/authAPI';
 
 const ResetPassword = () => {
   const navigate = useNavigate();
@@ -65,61 +66,21 @@ const ResetPassword = () => {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:8080/auth/reset-password", {
-        method: "POST",
-        headers: { 
-          "Content-Type": "application/json",
-          "Accept": "application/json"
-        },
-        mode: 'cors',
-        body: JSON.stringify({
-          token: token,
-          newPassword: formData.password
-        })
-      });
-
-      const responseText = await response.text();
-      let data;
+      await authAPI.resetPassword(token, formData.password);
       
-      const contentType = response.headers.get('content-type');
-      if (contentType && contentType.includes('application/json')) {
-        try {
-          data = JSON.parse(responseText);
-        } catch (parseError) {
-          data = { message: responseText };
-        }
-      } else {
-        data = { message: responseText };
-      }
-
-      if (!response.ok) {
-        let errorMessage = 'Failed to reset password. Please try again.';
-        
-        if (data && typeof data.message === 'string') {
-          errorMessage = data.message;
-        } else if (responseText && typeof responseText === 'string') {
-          errorMessage = responseText;
-        }
-
-        if (response.status === 400 || errorMessage.includes('expired') || errorMessage.includes('invalid')) {
-          setTokenValid(false);
-        }
-
-        setError(errorMessage);
-        return;
-      }
-
       // Success - redirect to login
       navigate('/login', { 
         state: { message: 'Password reset successfully! Please log in with your new password.' }
       });
     } catch (error) {
       console.error("Reset Password Error:", error);
-      if (error.message === 'Failed to fetch') {
-        setError('Cannot connect to server. Please try again later.');
-      } else {
-        setError('An unexpected error occurred. Please try again.');
+      const errorMessage = error.message || 'Failed to reset password. Please try again.';
+      
+      if (errorMessage.includes('expired') || errorMessage.includes('invalid')) {
+        setTokenValid(false);
       }
+      
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
