@@ -166,9 +166,23 @@ public class VehicleController {
         return ResponseEntity.ok(createdVehicle);
     }
 
+    @Operation(
+            summary = "Get all available vehicles",
+            description = "Retrieves a list of all vehicles that are currently marked as AVAILABLE."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved available vehicles",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = VehicleResponse.class)
+                    )
+            )
+    })
     @GetMapping("/available")
-    public ResponseEntity<List<VehicleResponse>> getAvailableVehicles() {
-        List<VehicleResponse> vehicles = vehicleService.getAvailableVehicles();
+    public ResponseEntity<List<VehicleResponse>> getAllAvailableVehicles() {
+        List<VehicleResponse> vehicles = vehicleService.getVehiclesByStatus(VehicleStatus.AVAILABLE);
         return ResponseEntity.ok(vehicles);
     }
 }

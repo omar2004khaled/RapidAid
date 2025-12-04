@@ -1,5 +1,6 @@
 package com.example.auth.service;
 
+import com.example.auth.dto.VehicleResponse;
 import com.example.auth.entity.Assignment;
 import com.example.auth.entity.Incident;
 import com.example.auth.entity.Vehicle;
@@ -47,6 +48,8 @@ public class VehicleMovementSimulationService {
     @Autowired
     private WebSocketNotificationService webSocketNotificationService;
 
+    @Autowired
+    private VehicleService vehicleService;
 
     @Scheduled(fixedDelayString = "${vehicle.simulation.update-interval-ms:2000}")
     @Transactional
@@ -106,7 +109,7 @@ public class VehicleMovementSimulationService {
         }
     }
 
-    private void moveVehicle(Assignment assignment, Vehicle vehicle, 
+    private void moveVehicle(Assignment assignment, Vehicle vehicle,
                             BigDecimal targetLat, BigDecimal targetLng, double distanceKm) {
         if (assignment.getAssignmentStatus() == AssignmentStatus.ASSIGNED) {
             assignment.setAssignmentStatus(AssignmentStatus.ENROUTE);
@@ -117,9 +120,9 @@ public class VehicleMovementSimulationService {
         double stepSize = Math.min(stepDistanceKm, distanceKm);
         double ratio = stepSize / distanceKm;
 
-        double newLat = vehicle.getLastLatitude().doubleValue() + 
+        double newLat = vehicle.getLastLatitude().doubleValue() +
                        (targetLat.doubleValue() - vehicle.getLastLatitude().doubleValue()) * ratio;
-        double newLng = vehicle.getLastLongitude().doubleValue() + 
+        double newLng = vehicle.getLastLongitude().doubleValue() +
                        (targetLng.doubleValue() - vehicle.getLastLongitude().doubleValue()) * ratio;
 
         /* Update vehicle location */
@@ -129,7 +132,7 @@ public class VehicleMovementSimulationService {
         vehicleRepository.save(vehicle);
     }
 
-    private void handleArrival(Assignment assignment, Vehicle vehicle, 
+    private void handleArrival(Assignment assignment, Vehicle vehicle,
                               BigDecimal targetLat, BigDecimal targetLng) {
         vehicle.setLastLatitude(targetLat);
         vehicle.setLastLongitude(targetLng);
@@ -167,7 +170,8 @@ public class VehicleMovementSimulationService {
         }
 
         incidentService.checkIncidentCompletion(assignment.getIncident());
-        webSocketNotificationService.notifyAcceptedIncidentUpdate();
+        List<VehicleResponse> availableVehicles = vehicleService.getAvailableVehicles();
+        webSocketNotificationService.notifyAvailableVehicleUpdate(availableVehicles);
     }
 
     private double calculateDistanceKm(double lat1, double lng1, double lat2, double lng2) {
