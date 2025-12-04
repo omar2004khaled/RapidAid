@@ -165,4 +165,10 @@ public class VehicleController {
         VehicleResponse createdVehicle = vehicleService.createVehicle(vehicleRequest);
         return ResponseEntity.ok(createdVehicle);
     }
+
+    @GetMapping("/available")
+    public ResponseEntity<List<VehicleResponse>> getAvailableVehicles() {
+        List<VehicleResponse> vehicles = vehicleService.getAvailableVehicles();
+        return ResponseEntity.ok(vehicles);
+    }
 }

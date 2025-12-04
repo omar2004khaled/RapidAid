@@ -107,4 +107,10 @@ public class VehicleService {
         return vehicleMapper.toResponse(savedVehicle);
     }
 
+    @Transactional(readOnly = true)
+    public List<VehicleResponse> getAvailableVehicles() {
+        List<Vehicle> vehicles = vehicleRepository.findByStatus("AVAILABLE");
+        return vehicles.stream().map(vehicleMapper::toResponse).collect(Collectors.toList());
+    }
+
 }
