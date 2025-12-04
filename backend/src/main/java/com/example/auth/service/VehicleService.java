@@ -10,7 +10,6 @@ import com.example.auth.enums.VehicleStatus;
 import com.example.auth.mapper.VehicleMapper;
 import com.example.auth.repository.AssignmentRepository;
 import com.example.auth.repository.VehicleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,15 +25,18 @@ public class VehicleService {
     private final AssignmentRepository assignmentRepository;
     private final VehicleRepository vehicleRepository;
     private final IncidentService incidentService;
+    private final WebSocketNotificationService webSocketNotificationService;
 
     public VehicleService(AssignmentRepository assignmentRepository,
                          VehicleRepository vehicleRepository,
                          IncidentService incidentService,
-                         VehicleMapper vehicleMapper) {
+                         VehicleMapper vehicleMapper,
+                         WebSocketNotificationService webSocketNotificationService) {
         this.assignmentRepository = assignmentRepository;
         this.vehicleRepository = vehicleRepository;
         this.incidentService = incidentService;
         this.vehicleMapper = vehicleMapper;
+        this.webSocketNotificationService = webSocketNotificationService;
     }
 
     @Transactional
@@ -90,6 +92,9 @@ public class VehicleService {
 
         vehicle.setStatus(status);
         Vehicle updatedVehicle = vehicleRepository.save(vehicle);
+
+        List<VehicleResponse> availableVehicles = getAvailableVehicles();
+        webSocketNotificationService.notifyAvailableVehicleUpdate(availableVehicles);
         return vehicleMapper.toResponse(updatedVehicle);
     }
 
@@ -101,9 +106,13 @@ public class VehicleService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
     public VehicleResponse createVehicle(VehicleRequest vehicleRequest) {
         Vehicle vehicle = vehicleMapper.toEntity(vehicleRequest);
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
+
+        List<VehicleResponse> availableVehicles = getAvailableVehicles();
+        webSocketNotificationService.notifyAvailableVehicleUpdate(availableVehicles);
         return vehicleMapper.toResponse(savedVehicle);
     }
 
