@@ -180,7 +180,7 @@ public class VehicleController {
                     )
             )
     })
-    @GetMapping("/all-available")
+    @GetMapping("/available")
     public ResponseEntity<List<VehicleResponse>> getAllAvailableVehicles() {
         List<VehicleResponse> vehicles = vehicleService.getVehiclesByStatus(VehicleStatus.AVAILABLE);
         return ResponseEntity.ok(vehicles);
