@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import authAPI from '../services/authAPI';
 
 const EmailVerified = () => {
   const [searchParams] = useSearchParams();
@@ -18,34 +19,23 @@ const EmailVerified = () => {
       }
 
       try {
-        const response = await fetch(`http://localhost:8080/auth/verify-email?token=${token}`, {
-          method: 'GET',
-          headers: {
-            'Accept': 'application/json'
-          }
-        });
-
-        const data = await response.json();
-
-        if (response.ok) {
-          setStatus('success');
-          setMessage(data.message || 'Email verified successfully!');
-          
-          // Redirect to login after 3 seconds
-          setTimeout(() => {
-            navigate('/login', { 
-              state: { 
-                message: 'Email verified successfully! You can now login.' 
-              } 
-            });
-          }, 3000);
-        } else {
-          setStatus('error');
-          setMessage(data.message || 'Verification failed. Please try again.');
-        }
+        const data = await authAPI.verifyEmail(token);
+        
+        setStatus('success');
+        setMessage(data.message || 'Email verified successfully!');
+        
+        // Redirect to login after 3 seconds
+        setTimeout(() => {
+          navigate('/login', { 
+            state: { 
+              message: 'Email verified successfully! You can now login.' 
+            } 
+          });
+        }, 3000);
       } catch (error) {
+        console.error('Email verification error:', error);
         setStatus('error');
-        setMessage('Cannot connect to server. Please try again later.');
+        setMessage(error.message || 'Verification failed. Please try again.');
       }
     };
 

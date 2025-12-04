@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import authAPI from '../services/authAPI';
 
 const CompleteProfile = () => {
   const navigate = useNavigate();
@@ -84,50 +85,23 @@ const CompleteProfile = () => {
       setLoading(true);
 
       try {
-        const response = await fetch(`http://localhost:8080/auth/complete-oauth-profile?email=${encodeURIComponent(email)}`, {
-          method: "POST",
-          headers: { 
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-          },
-          mode: 'cors',
-          body: JSON.stringify({
-            username: formData.username.trim(),
-            phone: formData.phone,
-            role: formData.role
-          })
+        const data = await authAPI.completeOAuthProfile(email, {
+          username: formData.username.trim(),
+          phone: formData.phone,
+          role: formData.role
         });
-
-        const responseText = await response.text();
-        let data;
-        try {
-          data = JSON.parse(responseText);
-        } catch (e) {
-          data = { message: responseText };
-        }
-
-        if (!response.ok) {
-          let errorMessage = 'Profile completion failed';
-          
-          if (typeof data === 'string') {
-            errorMessage = data;
-          } else if (data.message) {
-            errorMessage = data.message;
-          }
-
-          setApiError(errorMessage);
-          return;
-        }
 
         // Success - store token and redirect
         if (data.token) {
           localStorage.setItem('authToken', data.token);
+          localStorage.setItem('userRole', data.role);
+          localStorage.setItem('userEmail', data.email);
         }
         navigate('/dashboard');
           
       } catch (error) {
         console.error("Profile completion error:", error);
-        setApiError('An unexpected error occurred. Please try again.');
+        setApiError(error.message || 'An unexpected error occurred. Please try again.');
       } finally {
         setLoading(false);
       }
