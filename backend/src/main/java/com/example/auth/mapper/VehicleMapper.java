@@ -11,13 +11,9 @@ import org.mapstruct.NullValuePropertyMappingStrategy;
 @Mapper(componentModel = "spring", nullValuePropertyMappingStrategy = NullValuePropertyMappingStrategy.IGNORE)
 public interface VehicleMapper {
 
-    @Mapping(target = "driverUserId", source = "driver.userId")
-    @Mapping(target = "driverName", source = "driver.fullName")
     VehicleResponse toResponse(Vehicle vehicle);
 
-    @Mapping(target = "driver.userId", source = "driverUserId")
     Vehicle toEntity(VehicleRequest request);
 
-    @Mapping(target = "driver.userId", source = "driverUserId")
     void updateEntityFromRequest(VehicleRequest request, @MappingTarget Vehicle vehicle);
 }

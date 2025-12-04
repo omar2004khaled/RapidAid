@@ -6,6 +6,15 @@ import com.example.auth.entity.User;
 import com.example.auth.enums.UserRole;
 import com.example.auth.repository.IncidentRepository;
 import com.example.auth.repository.UserRepository;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,6 +30,8 @@ import java.util.Optional;
 @RestController
 @RequestMapping("/admin")
 @PreAuthorize("hasRole('ADMINISTRATOR')")
+@Tag(name = "Administration", description = "Administrator-only endpoints for system management and user administration")
+@SecurityRequirement(name = "bearerAuth")
 public class AdminController {
 
     private final UserRepository userRepository;
@@ -33,12 +44,41 @@ public class AdminController {
         this.incidentRepository = incidentRepository;
     }
 
+    @Operation(
+            summary = "Get all users",
+            description = "Retrieves a complete list of all registered users in the system. Requires ADMINISTRATOR role."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved users",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = User.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "403", description = "Forbidden - requires ADMINISTRATOR role")
+    })
     @GetMapping("/users")
     public ResponseEntity<?> getAllUsers() {
         var users = userRepository.findAll();
         return ResponseEntity.ok(users);
     }
 
+    @Operation(
+            summary = "Get system statistics",
+            description = "Retrieves system statistics including total users, enabled users, and admin count."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved statistics",
+                    content = @Content(
+                            mediaType = "text/plain",
+                            examples = @ExampleObject(value = "Total Users: 50, Enabled: 45, Admins: 3")
+                    )
+            )
+    })
     @GetMapping("/stats")
     public String getStats() {
         long totalUsers = userRepository.count();
@@ -53,8 +93,28 @@ public class AdminController {
                 totalUsers, enabledUsers, adminUsers);
     }
 
+    @Operation(
+            summary = "Promote user to administrator",
+            description = "Promotes an existing user to ADMINISTRATOR role. User must have verified their email."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "User promoted successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = "\"User john@example.com promoted to ADMINISTRATOR successfully!\"")
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "Bad request - user not found, already admin, or email not verified"
+            )
+    })
     @PostMapping("/promote/{userId}")
-    public ResponseEntity<?> promoteToAdmin(@PathVariable Long userId) {
+    public ResponseEntity<?> promoteToAdmin(
+            @Parameter(description = "User ID to promote", required = true, example = "1")
+            @PathVariable Long userId) {
         Optional<User> userOptional = userRepository.findById(userId);
 
         if (userOptional.isEmpty()) {
@@ -79,8 +139,49 @@ public class AdminController {
 
         return ResponseEntity.ok("User " + user.getEmail() + " promoted to ADMINISTRATOR successfully!");
     }
+    @Operation(
+            summary = "Create new administrator",
+            description = "Creates a new administrator user with full system access. Auto-enables the account without email verification."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Admin created successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = """
+                                    {
+                                        "success": true,
+                                        "message": "Admin created successfully",
+                                        "userId": 1,
+                                        "name": "Admin User",
+                                        "email": "admin@example.com",
+                                        "role": "ADMINISTRATOR",
+                                        "enabled": true,
+                                        "createdAt": "2025-12-04T10:00:00"
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Bad request - validation error or email already exists")
+    })
     @PostMapping("/create")
-    public ResponseEntity<?> createAdmin(@RequestBody CreateAdminRequest request) {
+    public ResponseEntity<?> createAdmin(
+            @io.swagger.v3.oas.annotations.parameters.RequestBody(
+                    description = "Admin user details",
+                    required = true,
+                    content = @Content(
+                            schema = @Schema(implementation = CreateAdminRequest.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                        "name": "Admin User",
+                                        "email": "admin@example.com",
+                                        "password": "AdminPass123!"
+                                    }
+                                    """)
+                    )
+            )
+            @RequestBody CreateAdminRequest request) {
         try {
             // Log the request for debugging
             System.out.println("Creating admin with email: " + request.getEmail());
@@ -191,8 +292,25 @@ public class AdminController {
         }
     }
 
+    @Operation(
+            summary = "Remove admin user",
+            description = "Removes an administrator user from the system. Cannot remove the system administrator (admin@rapidaid.com)."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Admin user removed successfully",
+                    content = @Content(
+                            mediaType = "application/json",
+                            examples = @ExampleObject(value = "{\"message\": \"Admin user admin@example.com removed successfully!\"}")
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "Bad request - user not found or cannot remove system admin")
+    })
     @PostMapping("/demote/{userId}")
-    public ResponseEntity<?> demoteToUser(@PathVariable Long userId) {
+    public ResponseEntity<?> demoteToUser(
+            @Parameter(description = "User ID to remove", required = true, example = "1")
+            @PathVariable Long userId) {
         Optional<User> userOptional = userRepository.findById(userId);
 
         if (userOptional.isEmpty()) {
@@ -219,9 +337,25 @@ public class AdminController {
         return ResponseEntity.ok(response);
     }
 
-    // Get user by ID
+    @Operation(
+            summary = "Get user by ID",
+            description = "Retrieves detailed information about a specific user."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved user",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = User.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "400", description = "User not found")
+    })
     @GetMapping("/users/{userId}")
-    public ResponseEntity<?> getUserById(@PathVariable Long userId) {
+    public ResponseEntity<?> getUserById(
+            @Parameter(description = "User ID", required = true, example = "1")
+            @PathVariable Long userId) {
         Optional<User> userOptional = userRepository.findById(userId);
 
         if (userOptional.isEmpty()) {
@@ -231,7 +365,21 @@ public class AdminController {
         return ResponseEntity.ok(userOptional.get());
     }
 
-    // Incident Management Endpoints
+    @Operation(
+            summary = "Get all incidents (Admin)",
+            description = "Retrieves all incidents in the system for administrative review."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved incidents",
+                    content = @Content(
+                            mediaType = "application/json",
+                            schema = @Schema(implementation = Incident.class)
+                    )
+            ),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
+    })
     @GetMapping("/incidents")
     public ResponseEntity<?> getAllIncidents() {
         try {
@@ -270,7 +418,17 @@ public class AdminController {
         }
     }
 
-    // Unit Management Endpoints
+    @Operation(
+            summary = "Get all emergency units",
+            description = "Retrieves a list of all emergency response units and their current status."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Successfully retrieved units",
+                    content = @Content(mediaType = "application/json")
+            )
+    })
     @GetMapping("/units")
     public ResponseEntity<?> getAllUnits() {
         // Return mock data for now - replace with actual repository call
