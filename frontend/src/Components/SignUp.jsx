@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 import { Link, useNavigate } from 'react-router-dom';
+import authAPI from '../services/authAPI';
 
 const SignUp = () => {
  const navigate = useNavigate();
@@ -107,56 +108,15 @@ const SignUp = () => {
   setSuccessMessage('');
 
   try {
-    const response = await fetch("http://localhost:8080/auth/register", {
-      method: "POST",
-      headers: { 
-        "Content-Type": "application/json",
-        "Accept": "application/json"
-      },
-      mode: 'cors',
-      body: JSON.stringify({
-        username: formData.username.trim(),
-        fullName: formData.fullName.trim(),
-        email: formData.email.toLowerCase().trim(),
-        password: formData.password,
-        confirmPassword: formData.confirmPassword,
-        phone: formData.phone,
-        role: formData.role
-      })
+    await authAPI.register({
+      username: formData.username.trim(),
+      fullName: formData.fullName.trim(),
+      email: formData.email.toLowerCase().trim(),
+      password: formData.password,
+      confirmPassword: formData.confirmPassword,
+      phone: formData.phone,
+      role: formData.role
     });
-
-    const responseText = await response.text();
-    let data;
-    try {
-      data = JSON.parse(responseText);
-    } catch (e) {
-      data = { 
-        message: responseText || 'No response from server',
-        success: response.ok 
-      };
-    }
-
-    if (!response.ok) {
-      let errorMessage = 'Registration failed';
-      
-      if (typeof data === 'string') {
-        errorMessage = data;
-      } else if (data.message) {
-        errorMessage = data.message;
-      } else if (data.error) {
-        errorMessage = data.error;
-      }
-
-      if (response.status === 409) {
-        setApiError('This email is already registered. Please use a different email or try logging in.');
-      } else if (response.status === 400) {
-        setApiError(errorMessage);
-      } else {
-        setApiError(`${errorMessage} (Status: ${response.status})`);
-      }
-      
-      return;
-    }
 
     // SUCCESS: Redirect to verification page immediately
     console.log("Registration successful, redirecting to verification...");
@@ -170,10 +130,12 @@ const SignUp = () => {
   } catch (error) {
     console.error("Registration Error:", error);
     
-    if (error.message === 'Failed to fetch') {
+    if (error.message.includes('email is already registered') || error.message.includes('409')) {
+      setApiError('This email is already registered. Please use a different email or try logging in.');
+    } else if (error.message === 'Failed to fetch') {
       setApiError('Cannot connect to server. Please check if the backend is running and try again.');
     } else {
-      setApiError(`An unexpected error occurred: ${error.message}`);
+      setApiError(error.message || 'An unexpected error occurred');
     }
   } finally {
     setLoading(false);

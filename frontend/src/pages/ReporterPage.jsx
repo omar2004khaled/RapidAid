@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import "../css/ReporterCss.css";
+import incidentAPI from '../services/incidentAPI';
 
 function ReporterPage() {
     const navigate = useNavigate();
@@ -11,23 +12,65 @@ function ReporterPage() {
         location: '',
         description: ''
     });
+    const [loading, setLoading] = useState(false);
+    const [error, setError] = useState('');
+    const [success, setSuccess] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+        if (error) setError('');
     };
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-        console.log('Report submitted:', formData);
-        alert('Emergency reported successfully!');
-        setFormData({
-            name: '',
-            phone: '',
-            emergencyType: '',
-            location: '',
-            description: ''
-        });
+        setLoading(true);
+        setError('');
+        
+        try {
+            // Map form data to backend expected format
+            // Convert emergency type to match backend enum (MEDICAL, FIRE, POLICE)
+            let serviceType = formData.emergencyType.toUpperCase();
+            if (serviceType === 'CRIME') serviceType = 'POLICE';
+            if (serviceType === 'ACCIDENT') serviceType = 'MEDICAL';
+            if (serviceType === 'OTHER') serviceType = 'MEDICAL';
+            
+            const incidentData = {
+                incidentType: serviceType,
+                reportedByUserId: null, // Public report - no user ID
+                address: {
+                    street: formData.location,
+                    city: "Unknown",
+                    neighborhood: "Unknown",
+                    buildingNo: "N/A",
+                    apartmentNo: "N/A",
+                    latitude: null,
+                    longitude: null
+                },
+                severityLevel: 3, // Default medium severity
+                lifeCycleStatus: "REPORTED"
+            };
+            
+            await incidentAPI.createIncident(incidentData);
+            
+            setSuccess(true);
+            alert('Emergency reported successfully! Our team will respond shortly.');
+            setFormData({
+                name: '',
+                phone: '',
+                emergencyType: '',
+                location: '',
+                description: ''
+            });
+            
+            // Reset success message after 3 seconds
+            setTimeout(() => setSuccess(false), 3000);
+        } catch (err) {
+            console.error('Error reporting emergency:', err);
+            setError(err.message || 'Failed to report emergency. Please try again.');
+        } finally {
+            setLoading(false);
+        }
     };
 
     return (
@@ -44,6 +87,16 @@ function ReporterPage() {
                 </div>
             </div>
             <div className="report-body">
+                {error && (
+                    <div className="p-4 mb-4 bg-red-50 border border-red-200 rounded-lg">
+                        <p className="text-sm text-red-700">{error}</p>
+                    </div>
+                )}
+                {success && (
+                    <div className="p-4 mb-4 bg-green-50 border border-green-200 rounded-lg">
+                        <p className="text-sm text-green-700">Emergency reported successfully!</p>
+                    </div>
+                )}
                 <form onSubmit={handleSubmit}>
                     <div className="form-group">
                         <label htmlFor="name">Name</label>
@@ -110,7 +163,14 @@ function ReporterPage() {
                             required
                         ></textarea>
                     </div>
-                    <button type="submit" className="submit-btn">Submit Report</button>
+                    <button 
+                        type="submit" 
+                        className="submit-btn" 
+                        disabled={loading}
+                        style={{ opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
+                    >
+                        {loading ? 'Submitting...' : 'Submit Report'}
+                    </button>
                 </form>
             </div>
         </div>
