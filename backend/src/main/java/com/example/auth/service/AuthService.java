@@ -64,7 +64,7 @@ public class AuthService {
         user.setPassword(passwordEncoder.encode(password));
         user.setPhone(request.getPhone());
         user.setRole(request.getRole());
-        user.setStatus(UserStatus.ACTIVE);
+        user.setStatus(UserStatus.PENDING);
         user.setEnabled(false); // User must verify email first
         user.setCreatedAt(LocalDateTime.now());
 
@@ -91,12 +91,23 @@ public class AuthService {
             throw new IllegalArgumentException("Please verify your email first");
         }
 
-        // 3. Check if password matches
+        // 3. Check if user is approved by admin
+        if (user.getStatus() == UserStatus.PENDING) {
+            throw new IllegalArgumentException("Your account is pending admin approval");
+        }
+        if (user.getStatus() == UserStatus.REJECTED) {
+            throw new IllegalArgumentException("Your account has been rejected");
+        }
+        if (user.getStatus() != UserStatus.ACTIVE) {
+            throw new IllegalArgumentException("Your account is not active");
+        }
+
+        // 4. Check if password matches
         if (!passwordEncoder.matches(password, user.getPassword())) {
             throw new IllegalArgumentException("Invalid password");
         }
 
-        // 4. Generate JWT token
+        // 5. Generate JWT token
         return jwtService.generateToken(user.getEmail(), user.getRole().toString());
     }
 
@@ -120,7 +131,7 @@ public class AuthService {
         user.setEmail(email.toLowerCase());
         user.setUsername(request.getUsername().trim());
         user.setPhone(request.getPhone());
-//        user.setRole(request.getRole());
+        user.setRole(request.getRole());
         user.setStatus(UserStatus.ACTIVE);
         user.setEnabled(true);
         user.setCreatedAt(LocalDateTime.now());

@@ -55,4 +55,26 @@ public class UserService {
         }
         userRepository.deleteById(userId);
     }
+
+    @Transactional(readOnly = true)
+    public List<User> getPendingUsers() {
+        return userRepository.findByStatus(UserStatus.PENDING);
+    }
+
+    @Transactional
+    public void approveUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setStatus(UserStatus.ACTIVE);
+        user.setEnabled(true); // Enable the user account
+        userRepository.save(user);
+    }
+
+    @Transactional
+    public void rejectUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("User not found"));
+        user.setStatus(UserStatus.REJECTED);
+        userRepository.save(user);
+    }
 }

@@ -66,6 +66,50 @@ const adminAPI = {
       mode: 'cors'
     });
     return handleResponse(response);
+  },
+
+  /**
+   * Get pending user registrations
+   * GET /admin/pending-users
+   * @returns {Promise<Array>} List of pending users
+   */
+  getPendingUsers: async () => {
+    const response = await fetch(`${API_BASE_URL}/admin/pending-users`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Approve user registration
+   * POST /admin/approve-user/{userId}
+   * @param {number} userId - User ID to approve
+   * @returns {Promise<Object>} Success message
+   */
+  approveUser: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/admin/approve-user/${userId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Reject user registration
+   * POST /admin/reject-user/{userId}
+   * @param {number} userId - User ID to reject
+   * @returns {Promise<Object>} Success message
+   */
+  rejectUser: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/admin/reject-user/${userId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
   }
 };
 
