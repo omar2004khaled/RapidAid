@@ -18,7 +18,7 @@ public class EmailService {
             System.out.println("Attempting to send email to: " + to);
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);
-            message.setSubject("SmartLink - Email Verification");
+            message.setSubject("RapidAid - Email Verification");
             message.setText("Click the link to verify your email: http://localhost:8080/auth/verify?token=" + token);
 
             mailSender.send(message);
@@ -38,7 +38,7 @@ public class EmailService {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
             message.setTo(to);
-            message.setSubject("SmartLink - Password Reset");
+            message.setSubject("RapidAid - Password Reset");
 
             // Frontend URL (where React handles the token)
             String resetLink = "http://localhost:5175/reset-password?token=" + token;

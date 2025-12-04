@@ -13,7 +13,7 @@ const authAPI = {
    * @param {string} registerData.email - User email
    * @param {string} registerData.password - User password
    * @param {string} registerData.fullName - User full name
-   * @param {string} registerData.role - User role (REPORTER, DISPATCHER, RESPONDER)
+   * @param {string} registerData.role - User role (ADMINISTRATOR)
    * @returns {Promise<Object>} Registration response
    */
   register: async (registerData) => {

@@ -203,8 +203,6 @@ const CompleteProfile = () => {
                 } bg-gray-800 focus:bg-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 text-white transition-colors`}
               >
                 <option value="">Select role</option>
-                <option value="DISPATCHER">Dispatcher</option>
-                <option value="RESPONDER">Responder</option>
                 <option value="ADMINISTRATOR">Administrator</option>
               </select>
               {errors.role && (
