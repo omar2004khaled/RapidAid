@@ -4,10 +4,10 @@ import com.example.auth.dto.IncidentResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
 import org.springframework.stereotype.Service;
+
+import java.util.List;
 
 @Service
 public class WebSocketNotificationService {
@@ -20,13 +20,25 @@ public class WebSocketNotificationService {
     @Autowired
     private IncidentService incidentService;
 
-    public void notifyIncidentUpdate() {
-        logger.info("Attempting to send WebSocket notification...");
-        Page<IncidentResponse> updatedIncidents = incidentService.getReportedIncidentsOrdered(PageRequest.of(0, 10));
-        logger.info("Fetched incidents to broadcast");
+    public void notifyAcceptedIncidentUpdate() {
+        logger.info("Processing accepted incident update notification.....");
+        List<IncidentResponse> updatedIncidents = incidentService.getAcceptedIncidentsOrdered();
         messagingTemplate.convertAndSend("/topic/incidents", updatedIncidents);
-        logger.info("✅ WebSocket message sent to /topic/incidents");
+        logger.info("Sending accepted incident update notification via WebSocket.");
     }
+
+    public void notifyReportedIncidentUpdate() {
+        logger.info("Processing reported incident update notification.....");
+        List<IncidentResponse> updatedIncidents = incidentService.getReportedIncidents();
+        messagingTemplate.convertAndSend("/topic/incidents", updatedIncidents);
+        logger.info("Sending reported incident update notification via WebSocket.");
+    }
+
+
+
+
+
+
 
 
 }
