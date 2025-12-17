@@ -10,6 +10,8 @@ function ReporterPage() {
         phone: '',
         emergencyType: '',
         location: '',
+        latitude: '',
+        longitude: '',
         description: ''
     });
     const [loading, setLoading] = useState(false);
@@ -29,24 +31,22 @@ function ReporterPage() {
         
         try {
             // Map form data to backend expected format
-            // Convert emergency type to match backend enum (MEDICAL, FIRE, POLICE)
             let serviceType = formData.emergencyType.toUpperCase();
-            if (serviceType === 'CRIME') serviceType = 'POLICE';
-            if (serviceType === 'ACCIDENT') serviceType = 'MEDICAL';
-            if (serviceType === 'OTHER') serviceType = 'MEDICAL';
             
             const incidentData = {
                 incidentType: serviceType,
-                reportedByUserId: null, // Public report - no user ID
                 address: {
                     street: formData.location,
                     city: "Unknown",
                     neighborhood: "Unknown",
                     buildingNo: "N/A",
                     apartmentNo: "N/A",
-                    latitude: null,
-                    longitude: null
+                    latitude: formData.latitude,
+                    longitude: formData.longitude
                 },
+                description: formData.description,
+                reporterName: formData.name,
+                reporterPhone: formData.phone,
                 severityLevel: 3, // Default medium severity
                 lifeCycleStatus: "REPORTED"
             };
@@ -60,6 +60,8 @@ function ReporterPage() {
                 phone: '',
                 emergencyType: '',
                 location: '',
+                latitude: '',
+                longitude: '',
                 description: ''
             });
             
@@ -134,20 +136,44 @@ function ReporterPage() {
                             <option value="">Select emergency type</option>
                             <option value="Medical">Medical</option>
                             <option value="Fire">Fire</option>
-                            <option value="Crime">Crime</option>
-                            <option value="Accident">Accident</option>
-                            <option value="Other">Other</option>
+                            <option value="Police">Police</option>
                         </select>
                     </div>
                     <div className="form-group">
-                        <label htmlFor="location">Location</label>
+                        <label htmlFor="location">Address</label>
                         <input
                             type="text"
                             id="location"
                             name="location"
                             value={formData.location}
                             onChange={handleChange}
-                            placeholder="Enter the emergency location"
+                            placeholder="Enter the emergency address"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="latitude">Latitude</label>
+                        <input
+                            type="number"
+                            step="any"
+                            id="latitude"
+                            name="latitude"
+                            value={formData.latitude}
+                            onChange={handleChange}
+                            placeholder="Enter the emergency latitude"
+                            required
+                        />
+                    </div>
+                    <div className="form-group">
+                        <label htmlFor="longitude">Longitude</label>
+                        <input
+                            type="number"
+                            step="any"
+                            id="longitude"
+                            name="longitude"
+                            value={formData.longitude}
+                            onChange={handleChange}
+                            placeholder="Enter the emergency longitude"
                             required
                         />
                     </div>

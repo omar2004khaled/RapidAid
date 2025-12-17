@@ -18,11 +18,12 @@ const Dashboard = () => {
   const [incidents, setIncidents] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
 
-  const [newUnit, setNewUnit] = useState({ type: '', count: 0, location: '' });
+  const [newUnit, setNewUnit] = useState({ type: '', count: 0, lattiude: 13, longitude: 13 });
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   
-  const incidentSubscriptionRef = useRef(null);
+  const incidentReportedSubscriptionRef = useRef(null);
+  const incidentAcceptedSubscriptionRef = useRef(null);
   const vehicleSubscriptionRef = useRef(null);
 
   const fetchData = async () => {
@@ -43,14 +44,17 @@ const Dashboard = () => {
       () => {
         console.log('[Dashboard] Connected to WebSocket');
         
+        const refreshIncidents = () => {
+            console.log('[Dashboard] Incident update received, refreshing...');
+            fetchIncidents();
+        };
+
         // Subscribe to incident updates
-        incidentSubscriptionRef.current = websocketService.subscribe('/topic/incidents', (data) => {
-          console.log('[Dashboard] Incident update received:', data);
-          processIncidents(data);
-        });
+        incidentReportedSubscriptionRef.current = websocketService.subscribe('/topic/incident/reported', refreshIncidents);
+        incidentAcceptedSubscriptionRef.current = websocketService.subscribe('/topic/incident/accepted', refreshIncidents);
         
         // Subscribe to vehicle updates
-        vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicles', (data) => {
+        vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicle/available', (data) => {
           console.log('[Dashboard] Vehicle update received:', data);
           processUnits(data);
         });
@@ -62,7 +66,8 @@ const Dashboard = () => {
     
     // Cleanup on unmount
     return () => {
-      if (incidentSubscriptionRef.current) websocketService.unsubscribe(incidentSubscriptionRef.current);
+      if (incidentReportedSubscriptionRef.current) websocketService.unsubscribe(incidentReportedSubscriptionRef.current);
+      if (incidentAcceptedSubscriptionRef.current) websocketService.unsubscribe(incidentAcceptedSubscriptionRef.current);
       if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
       websocketService.disconnect();
     };
@@ -133,7 +138,7 @@ const Dashboard = () => {
       id: vehicle.vehicleId,
       type: vehicle.vehicleType || vehicle.type || 'Unknown',
       count: 1,
-      location: vehicle.stationName || 'Unknown Station',
+      location: vehicle.stationName || 'Unknown',
       status: vehicle.status || 'Active'
     }));
     setEmergencyUnits(units);
@@ -225,21 +230,40 @@ const Dashboard = () => {
   };
 
   const addUnit = async () => {
-    if (!newUnit.type || !newUnit.location || newUnit.count <= 0) {
+    if (!newUnit.type || newUnit.count <= 0) {
       alert('Please fill in all fields with valid values');
       return;
     }
+
+    const normalizeType = (type) => {
+        const t = type.toLowerCase();
+        if (t.includes('ambulance')) return 'AMBULANCE';
+        if (t.includes('fire')) return 'FIRE_TRUCK';
+        if (t.includes('police')) return 'POLICE_CAR';
+        return null;
+    };
+
+    const normalizedType = normalizeType(newUnit.type);
+    if (!normalizedType) {
+        alert('Invalid vehicle type. Please use Ambulance, Fire Truck, or Police Car.');
+        return;
+    }
     
     try {
-      // TODO: Backend endpoint for creating vehicles doesn't exist yet
-      alert('Unit creation feature is not yet implemented in the backend');
-      // await vehicleAPI.createVehicle({
-      //   type: newUnit.type.trim(),
-      //   count: newUnit.count,
-      //   location: newUnit.location.trim()
-      // });
-      // setNewUnit({ type: '', count: 0, location: '' });
-      // fetchUnits();
+      for (let i = 0; i < newUnit.count; i++) {
+        await vehicleAPI.createVehicle({
+            vehicleType: normalizedType,
+            registrationNumber: `UNIT-${Math.floor(Math.random() * 100000)}`,
+            status: 'AVAILABLE',
+            capacity: 4,
+            lastLatitude: 30.0444,
+            lastLongitude: 31.2357
+        });
+      }
+      
+      alert('Units created successfully!');
+      setNewUnit({ type: '', count: 0, location: '' });
+      fetchUnits();
     } catch (error) {
       console.error('Error adding unit:', error);
       alert(error.message || 'Failed to create unit');
@@ -585,14 +609,6 @@ const Dashboard = () => {
                   onChange={(e) => setNewUnit({...newUnit, count: parseInt(e.target.value) || 0})}
                   className="border rounded px-3 py-2"
                   min="1"
-                  required
-                />
-                <input
-                  type="text"
-                  placeholder="Location/Station"
-                  value={newUnit.location}
-                  onChange={(e) => setNewUnit({...newUnit, location: e.target.value})}
-                  className="border rounded px-3 py-2"
                   required
                 />
                 <button onClick={addUnit} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">

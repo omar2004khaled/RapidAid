@@ -55,6 +55,22 @@ const vehicleAPI = {
   },
 
   /**
+   * Create new vehicle
+   * POST /api/vehicle/create
+   * @param {Object} vehicleData - Vehicle data
+   * @returns {Promise<Object>} Created vehicle
+   */
+  createVehicle: async (vehicleData) => {
+    const response = await fetch(`${API_BASE_URL}/api/vehicle/create`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      mode: 'cors',
+      body: JSON.stringify(vehicleData)
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Update vehicle location
    * PUT /api/vehicle/{vehicleId}/location
    * @param {number} vehicleId - Vehicle ID
