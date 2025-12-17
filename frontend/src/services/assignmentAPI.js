@@ -109,7 +109,10 @@ const assignmentAPI = {
   createAssignment: async (assignmentData) => {
     const response = await fetch(`${API_BASE_URL}/api/assignment/assign`, {
       method: 'POST',
-      headers: getAuthHeaders(),
+      headers: {
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
+      },
       mode: 'cors',
       body: JSON.stringify(assignmentData)
     });

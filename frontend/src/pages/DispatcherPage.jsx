@@ -2,27 +2,35 @@ import React, { useState, useEffect, useRef } from "react";
 import "../css/DispatcherCss.css";
 import incidentAPI from '../services/incidentAPI';
 import vehicleAPI from '../services/vehicleAPI';
+import assignmentAPI from '../services/assignmentAPI';
 import websocketService from '../services/websocketService';
 
 function DispatcherPage() {
     const [vehicle_inventory, setVehicle_inventory] = useState([]);
+    const [availableVehicles, setAvailableVehicles] = useState([]);
     const [emergencyBoard, setEmergencyBoard] = useState([]);
+    const [incidentsMap, setIncidentsMap] = useState({ reported: [], accepted: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
     
-    const incidentSubscriptionRef = useRef(null);
+    const reportedSubscriptionRef = useRef(null);
+    const acceptedSubscriptionRef = useRef(null);
     const vehicleSubscriptionRef = useRef(null);
 
     const fetchData = async () => {
         try {
             setLoading(true);
-            const [incidentsData, availableVehicles] = await Promise.all([
+            const [incidentsData, vehiclesData] = await Promise.all([
                 incidentAPI.getAllIncidents(),
                 vehicleAPI.getVehiclesByStatus('AVAILABLE')
             ]);
             
-            processIncidents(incidentsData);
-            processVehicles(availableVehicles);
+            const incidents = incidentsData.content || incidentsData;
+            const reported = incidents.filter(i => i.lifeCycleStatus === 'REPORTED');
+            const accepted = incidents.filter(i => i.lifeCycleStatus === 'ACCEPTED' || i.lifeCycleStatus === 'ASSIGNED');
+            
+            setIncidentsMap({ reported, accepted });
+            processVehicles(vehiclesData);
             setError('');
         } catch (err) {
             console.error('Error fetching dispatcher data:', err);
@@ -33,6 +41,7 @@ function DispatcherPage() {
     };
 
     const processVehicles = (vehicles) => {
+        setAvailableVehicles(vehicles);
         // Group vehicles by type and count them for inventory display
         const vehicleGroups = vehicles.reduce((acc, vehicle) => {
             const type = vehicle.vehicleType || vehicle.type || 'Unknown';
@@ -51,24 +60,20 @@ function DispatcherPage() {
         setVehicle_inventory(transformedUnits);
     };
 
-    const processIncidents = (incidentsData) => {
-        // Extract incidents from paginated response and filter only active incidents
-        const incidents = incidentsData.content || incidentsData;
-        const activeIncidents = incidents.filter(incident => 
-            incident.lifeCycleStatus === 'REPORTED' || 
-            incident.lifeCycleStatus === 'ASSIGNED'
-        );
+    useEffect(() => {
+        const activeIncidents = [...incidentsMap.reported, ...incidentsMap.accepted];
         
         setEmergencyBoard(prevBoard => {
             return activeIncidents.map(incident => {
                 // Check if we already have this incident in state
                 const existing = prevBoard.find(e => e.id === incident.incidentId);
+                console.log('Processing incident for emergency board:', incident);
                 
                 return {
                     id: incident.incidentId,
                     type: incident.incidentType,
-                    location: incident.address ? 
-                        `${incident.address.street}, ${incident.address.city}` : 
+                    location: (incident.latitude && incident.longitude) ? 
+                        `${incident.latitude}, ${incident.longitude}` : 
                         'Location not specified',
                     des: 'Emergency incident',
                     state: getPriorityLabel(incident.severityLevel),
@@ -80,7 +85,7 @@ function DispatcherPage() {
                 };
             });
         });
-    };
+    }, [incidentsMap]);
 
     useEffect(() => {
         fetchData();
@@ -91,14 +96,20 @@ function DispatcherPage() {
             () => {
                 console.log('[Dispatcher] Connected to WebSocket');
                 
-                // Subscribe to incident updates
-                incidentSubscriptionRef.current = websocketService.subscribe('/topic/incidents', (data) => {
-                    console.log('[Dispatcher] Incident update received:', data);
-                    processIncidents(data);
+                // Subscribe to reported incident updates
+                reportedSubscriptionRef.current = websocketService.subscribe('/topic/incident/reported', (data) => {
+                    console.log('[Dispatcher] Reported incidents update:', data);
+                    setIncidentsMap(prev => ({ ...prev, reported: data }));
+                });
+
+                // Subscribe to accepted incident updates
+                acceptedSubscriptionRef.current = websocketService.subscribe('/topic/incident/accepted', (data) => {
+                    console.log('[Dispatcher] Accepted incidents update:', data);
+                    setIncidentsMap(prev => ({ ...prev, accepted: data }));
                 });
                 
                 // Subscribe to vehicle updates
-                vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicles', (data) => {
+                vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicle/available', (data) => {
                     console.log('[Dispatcher] Vehicle update received:', data);
                     processVehicles(data);
                 });
@@ -111,7 +122,8 @@ function DispatcherPage() {
         // Don't disconnect on unmount since Dashboard manages the connection
         return () => {
             // Unsubscribe from topics when component unmounts
-            if (incidentSubscriptionRef.current) websocketService.unsubscribe(incidentSubscriptionRef.current);
+            if (reportedSubscriptionRef.current) websocketService.unsubscribe(reportedSubscriptionRef.current);
+            if (acceptedSubscriptionRef.current) websocketService.unsubscribe(acceptedSubscriptionRef.current);
             if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
         };
     }, []);
@@ -123,34 +135,34 @@ function DispatcherPage() {
         return 'Low';
     };
 
-    const getVehicleTypeMapping = (vehicleType) => {
+    const getVehicleTypeMapping = (key) => {
         const mapping = {
-            'police': 'Police Car',
-            'fire': 'Fire Truck',
-            'ambulance': 'Ambulance'
+            'police': 'POLICE_CAR',
+            'fire': 'FIRE_TRUCK',
+            'ambulance': 'AMBULANCE'
         };
-        return mapping[vehicleType];
+        return mapping[key];
     };
 
-    const updateVehicleCount = (emergencyId, vehicleType, delta) => {
-        const vehicleName = getVehicleTypeMapping(vehicleType);
-        const vehicle = vehicle_inventory.find(v => v.type === vehicleName);
+    const updateVehicleCount = (emergencyId, vehicleTypeKey, delta) => {
+        const vehicleType = getVehicleTypeMapping(vehicleTypeKey);
+        const vehicle = vehicle_inventory.find(v => v.type === vehicleType);
         
         // Check if we have enough inventory when adding vehicles to emergency
-        if (delta > 0 && parseInt(vehicle.inventory) <= 0) {
-            alert(`No ${vehicleName} available!`);
+        if (delta > 0 && (!vehicle || parseInt(vehicle.inventory) <= 0)) {
+            alert(`No ${vehicleType} available!`);
             return;
         }
 
         // Check if we can subtract from emergency (can't go below 0)
         const emergency = emergencyBoard.find(e => e.id === emergencyId);
-        if (delta < 0 && emergency[vehicleType] <= 0) {
+        if (delta < 0 && emergency[vehicleTypeKey] <= 0) {
             return;
         }
 
         // Update vehicle inventory
         setVehicle_inventory(prev => prev.map(v => {
-            if (v.type === vehicleName) {
+            if (v.type === vehicleType) {
                 return { ...v, inventory: String(parseInt(v.inventory) - delta) };
             }
             return v;
@@ -159,7 +171,7 @@ function DispatcherPage() {
         // Update emergency board
         setEmergencyBoard(prev => prev.map(e => {
             if (e.id === emergencyId) {
-                return { ...e, [vehicleType]: e[vehicleType] + delta };
+                return { ...e, [vehicleTypeKey]: e[vehicleTypeKey] + delta };
             }
             return e;
         }));
@@ -172,10 +184,33 @@ function DispatcherPage() {
                 alert('Please assign at least one unit before dispatching.');
                 return;
             }
+
+            // Determine which vehicles to assign
+            const assignments = [];
             
-            // TODO: Implement actual dispatch logic (assigning specific vehicles)
-            // For now, we just update the status to ACCEPTED as a placeholder
-            await incidentAPI.updateToAccepted(emergency.id);
+            if (emergency.police > 0) {
+                const policeVehicles = availableVehicles.filter(v => v.vehicleType === 'POLICE_CAR').slice(0, emergency.police);
+                policeVehicles.forEach(v => assignments.push({ incidentId: emergency.id, vehicleId: v.vehicleId }));
+            }
+            
+            if (emergency.fire > 0) {
+                const fireVehicles = availableVehicles.filter(v => v.vehicleType === 'FIRE_TRUCK').slice(0, emergency.fire);
+                fireVehicles.forEach(v => assignments.push({ incidentId: emergency.id, vehicleId: v.vehicleId }));
+            }
+            
+            if (emergency.ambulance > 0) {
+                const ambulances = availableVehicles.filter(v => v.vehicleType === 'AMBULANCE').slice(0, emergency.ambulance);
+                ambulances.forEach(v => assignments.push({ incidentId: emergency.id, vehicleId: v.vehicleId }));
+            }
+
+            if (assignments.length < totalUnits) {
+                alert('Not enough specific vehicles available to fulfill the request.');
+                // Should probably revert the counts or handle this better, but for now just alert
+                return;
+            }
+
+            // Create assignments
+            await Promise.all(assignments.map(a => assignmentAPI.createAssignment(a)));
             
             alert(`Successfully dispatched to ${emergency.location}:\n- Police: ${emergency.police}\n- Fire: ${emergency.fire}\n- Ambulance: ${emergency.ambulance}`);
             
@@ -233,7 +268,7 @@ function DispatcherPage() {
                             <p>Description: {emergency.des}</p>
                             
                             <div className="vehicle-counters">
-                                {'police' in emergency && (
+                                {emergency.type === 'POLICE' && (
                                     <div className="counter-row">
                                         <span>Police:</span>
                                         <div className="counter-controls">
@@ -243,7 +278,7 @@ function DispatcherPage() {
                                         </div>
                                     </div>
                                 )}
-                                {'fire' in emergency && (
+                                {emergency.type === 'FIRE' && (
                                     <div className="counter-row">
                                         <span>Fire:</span>
                                         <div className="counter-controls">
@@ -253,7 +288,7 @@ function DispatcherPage() {
                                         </div>
                                     </div>
                                 )}
-                                {'ambulance' in emergency && (
+                                {emergency.type === 'MEDICAL' && (
                                     <div className="counter-row">
                                         <span>Ambulance:</span>
                                         <div className="counter-controls">
