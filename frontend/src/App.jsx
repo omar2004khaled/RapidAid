@@ -10,22 +10,59 @@ import Dashboard from "./Components/Dashboard";
 import CompleteProfile from "./Components/CompleteProfile";
 import DispatcherPage from './pages/DispatcherPage';
 import ReporterPage from './pages/ReporterPage';
+import ProtectedRoute from "./Components/ProtectedRoute";
+import AuthRoute from "./Components/AuthRoute";
 
 function App() {
   return (
     <Routes>
-      <Route path="/signup" element={<SignUp />} />
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/signup"
+        element={
+          <AuthRoute>
+            <SignUp />
+          </AuthRoute>
+        }
+      />
+      <Route
+        path="/login"
+        element={
+          <AuthRoute>
+            <Login />
+          </AuthRoute>
+        }
+      />
       <Route path="/forgot-password" element={<ForgotPassword />} />
       <Route path="/reset-password" element={<ResetPassword />} />
       <Route path="/verify-email" element={<VerifyEmail />} />
       <Route path="/email-verified" element={<EmailVerified />} />
       <Route path="/auth/callback" element={<OAuthCallback />} />
       <Route path="/complete-profile" element={<CompleteProfile />} />
-      <Route path="/dashboard" element={<Dashboard />} />
-      <Route path="/dispatcher" element={<DispatcherPage />} />
+      <Route
+        path="/dashboard"
+        element={
+          <ProtectedRoute>
+            <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/dispatcher"
+        element={
+          <ProtectedRoute>
+            <DispatcherPage />
+          </ProtectedRoute>
+        }
+      />
       <Route path='/report' element={<ReporterPage />} />
-      <Route path="/" element={<Login />} />
+      <Route
+        path="/"
+        element={
+          <AuthRoute>
+            <Login />
+          </AuthRoute>
+        }
+      />
     </Routes>
   );
 }
