@@ -1,10 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import DispatcherPage from '../pages/DispatcherPage';
+// import DispatcherPage from '../pages/DispatcherPage';
 import adminAPI from '../services/adminAPI';
 import incidentAPI from '../services/incidentAPI';
 import vehicleAPI from '../services/vehicleAPI';
 import websocketService from '../services/websocketService';
+import '../css/DispatcherCss.css';
+import MapPage from "../pages/MapPage";
+
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -115,6 +118,15 @@ const Dashboard = () => {
       setAdmins(users.filter(user => user.role === 'ADMINISTRATOR'));
     } catch (error) {
       console.error('Error fetching admins:', error);
+
+      // If authentication is required or token is invalid/expired, clear stored auth and redirect
+      const msg = (error && error.message) ? error.message : '';
+      if (msg.includes('Full authentication') || msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('access denied')) {
+        console.warn('[Dashboard] Authentication required - clearing auth state and redirecting to login');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        navigate('/login', { state: { message: 'Session expired or not authorized. Please log in.' } });
+      }
     }
   };
 
@@ -324,6 +336,13 @@ const Dashboard = () => {
     }
   };
 
+  const getPriorityLabel = (level) => {
+    if (level >= 4) return 'Critical';
+    if (level >= 3) return 'High';
+    if (level >= 2) return 'Medium';
+    return 'Low';
+  };
+
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="bg-white shadow-sm border-b">
@@ -379,7 +398,7 @@ const Dashboard = () => {
             </div>
           </div>
           <nav className="flex space-x-8">
-            {['incidents', 'dispatch', 'admins', 'pending', 'units'].map(tab => (
+            {['incidents', 'admins', 'pending', 'units'].map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
@@ -400,62 +419,55 @@ const Dashboard = () => {
         {activeTab === 'incidents' && (
           <div className="bg-white rounded-lg shadow p-6">
             <h2 className="text-xl font-semibold mb-4">Reported Incidents</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">ID</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Severity</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reported</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {incidents.map(incident => (
-                    <tr key={incident.incidentId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{incident.incidentId}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{incident.incidentType}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          incident.severityLevel >= 4 ? 'bg-red-100 text-red-800' :
-                          incident.severityLevel >= 3 ? 'bg-orange-100 text-orange-800' :
-                          'bg-yellow-100 text-yellow-800'
-                        }`}>Level {incident.severityLevel}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className={`px-2 py-1 text-xs rounded-full ${
-                          incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-100 text-green-800' :
-                          incident.lifeCycleStatus === 'ASSIGNED' ? 'bg-blue-100 text-blue-800' :
-                          incident.lifeCycleStatus === 'CANCELLED' ? 'bg-red-100 text-red-800' :
-                          'bg-gray-100 text-gray-800'
-                        }`}>{incident.lifeCycleStatus}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(incident.timeReported).toLocaleString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <select 
-                          value={incident.lifeCycleStatus}
-                          onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
-                          className="border rounded px-2 py-1 text-xs"
-                        >
-                          <option value="REPORTED">Reported</option>
-                          <option value="ASSIGNED">Assigned</option>
-                          <option value="RESOLVED">Resolved</option>
-                          <option value="CANCELLED">Cancelled</option>
-                        </select>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+            <div className="emergency-item-container">
+              {incidents.map(incident => (
+                <div key={incident.incidentId} className="emergency-item">
+                  <div className="emergency-header">
+                    <h3>{incident.incidentType}</h3>
+                    <span className="emergency-state">{getPriorityLabel(incident.severityLevel)}</span>
+                  </div>
+                  <p>
+                    <strong>Location:</strong> {incident.latitude && incident.longitude 
+                      ? `${incident.latitude}, ${incident.longitude}` 
+                      : 'Location not specified'}
+                  </p>
+                  <p><strong>Description:</strong> {incident.description || 'No description provided'}</p>
+                  <p><strong>Reported:</strong> {new Date(incident.timeReported).toLocaleString()}</p>
+                  <div className="mt-3">
+                    <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
+                    <select 
+                      value={incident.lifeCycleStatus}
+                      onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
+                      className={`border rounded px-3 py-1 text-sm ${
+                        incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-50 border-green-300' :
+                        incident.lifeCycleStatus === 'ASSIGNED' ? 'bg-blue-50 border-blue-300' :
+                        incident.lifeCycleStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
+                        'bg-gray-50 border-gray-300'
+                      }`}
+                    >
+                      <option value="REPORTED">Reported</option>
+                      <option value="ASSIGNED">Assigned</option>
+                      <option value="RESOLVED">Resolved</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
+                  </div>
+                </div>
+              ))}
             </div>
+            {incidents.length === 0 && (
+              <div className="text-center py-8 text-gray-500">
+                No incidents reported
+              </div>
+            )}
+          <div className="mt-6">
+            <MapPage />
           </div>
-        )}
+          </div>
+        )
+        
+        }
 
-        {activeTab === 'dispatch' && <DispatcherPage />}
+        {/* {activeTab === 'dispatch' && <DispatcherPage />} */}
 
         {activeTab === 'pending' && (
           <div className="bg-white rounded-lg shadow p-6">
