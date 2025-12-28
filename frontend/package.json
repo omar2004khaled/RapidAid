@@ -15,9 +15,11 @@
     "@mui/material": "^7.3.5",
     "@stomp/stompjs": "^7.2.1",
     "axios": "^1.13.2",
+    "leaflet": "^1.9.4",
     "lucide-react": "^0.555.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
+    "react-leaflet": "^5.0.0",
     "react-router-dom": "^7.9.6",
     "sockjs-client": "^1.6.1"
   },
