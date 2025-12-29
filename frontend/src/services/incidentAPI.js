@@ -177,6 +177,39 @@ const incidentAPI = {
       mode: 'cors'
     });
     return handleResponse(response);
+  },
+
+  /**
+   * Report public incident (no auth required)
+   * POST /api/public/incident/report
+   * @param {Object} incidentData - Incident data
+   * @returns {Promise<Object>} Created incident
+   */
+  reportPublicIncident: async (incidentData) => {
+    const response = await fetch(`${API_BASE_URL}/api/public/incident/report`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      mode: 'cors',
+      body: JSON.stringify(incidentData)
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Delete incident
+   * DELETE /api/incident/delete/{id}
+   * @param {number} id - Incident ID to delete
+   * @returns {Promise<void>}
+   */
+  deleteIncident: async (id) => {
+    const response = await fetch(`${API_BASE_URL}/api/incident/delete/${id}`, {
+      method: 'DELETE',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
   }
 };
 

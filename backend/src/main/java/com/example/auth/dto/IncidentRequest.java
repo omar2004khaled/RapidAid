@@ -16,4 +16,5 @@ public class IncidentRequest {
     private AddressRequest address;
     private Integer severityLevel;
     private IncidentStatus lifeCycleStatus;
+    private String description;
 }

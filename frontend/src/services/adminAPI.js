@@ -110,6 +110,21 @@ const adminAPI = {
       mode: 'cors'
     });
     return handleResponse(response);
+  },
+
+  /**
+   * Remove/demote admin user
+   * POST /admin/demote/{userId}
+   * @param {number} userId - User ID to remove
+   * @returns {Promise<Object>} Success message
+   */
+  demoteAdmin: async (userId) => {
+    const response = await fetch(`${API_BASE_URL}/admin/demote/${userId}`, {
+      method: 'POST',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
   }
 };
 
