@@ -331,7 +331,8 @@ const Dashboard = () => {
   const updateIncidentStatus = async (id, status) => {
     try {
       await incidentAPI.updateStatus(id, status);
-      fetchIncidents();
+      // Force refresh incidents immediately
+      await fetchIncidents();
     } catch (error) {
       console.error('Error updating incident status:', error);
       alert('Failed to update incident status: ' + error.message);
@@ -795,24 +796,38 @@ const Dashboard = () => {
             </p>
             <div className="space-y-2 mb-4">
               <h4 className="font-medium">Available Vehicles:</h4>
-              {availableVehicles.length === 0 ? (
-                <p className="text-gray-500">No vehicles available</p>
-              ) : (
-                availableVehicles.map(vehicle => (
-                  <div key={vehicle.vehicleId} className="flex justify-between items-center p-2 border rounded">
-                    <div>
-                      <span className="font-medium">{vehicle.registrationNumber}</span>
-                      <span className="text-sm text-gray-500 ml-2">({vehicle.vehicleType})</span>
+              {(() => {
+                // Filter vehicles by incident type
+                const incidentType = selectedIncident.incidentType?.toLowerCase();
+                let filteredVehicles = availableVehicles;
+                
+                if (incidentType?.includes('police')) {
+                  filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'POLICE_CAR');
+                } else if (incidentType?.includes('fire')) {
+                  filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'FIRE_TRUCK');
+                } else if (incidentType?.includes('medical') || incidentType?.includes('ambulance')) {
+                  filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'AMBULANCE');
+                }
+                
+                return filteredVehicles.length === 0 ? (
+                  <p className="text-gray-500">No suitable vehicles available for this incident type</p>
+                ) : (
+                  filteredVehicles.map(vehicle => (
+                    <div key={vehicle.vehicleId} className="flex justify-between items-center p-2 border rounded">
+                      <div>
+                        <span className="font-medium">{vehicle.registrationNumber}</span>
+                        <span className="text-sm text-gray-500 ml-2">({vehicle.vehicleType})</span>
+                      </div>
+                      <button
+                        onClick={() => assignVehicleToIncident(vehicle.vehicleId)}
+                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                      >
+                        Assign
+                      </button>
                     </div>
-                    <button
-                      onClick={() => assignVehicleToIncident(vehicle.vehicleId)}
-                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                    >
-                      Assign
-                    </button>
-                  </div>
-                ))
-              )}
+                  ))
+                );
+              })()}
             </div>
             <div className="flex justify-end space-x-2">
               <button

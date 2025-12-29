@@ -182,6 +182,9 @@ public class VehicleLocationService {
     }
 
     private void handleVehicleArrival(Integer vehicleId) {
+        // Sync current Redis position to database immediately
+        syncVehicleLocationToDatabase(vehicleId);
+        
         List<Assignment> activeAssignments = assignmentRepository
             .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, "COMPLETED");
         
@@ -189,6 +192,22 @@ public class VehicleLocationService {
             assignment.setArrivedAt(LocalDateTime.now());
             assignment.setAssignmentStatus(com.example.auth.enums.AssignmentStatus.ARRIVED);
             assignmentRepository.save(assignment);
+        }
+    }
+    
+    private void syncVehicleLocationToDatabase(Integer vehicleId) {
+        String key = LOCATION_KEY_PREFIX + vehicleId;
+        String latStr = (String) redisTemplate.opsForHash().get(key, "latitude");
+        String lngStr = (String) redisTemplate.opsForHash().get(key, "longitude");
+        
+        if (latStr != null && lngStr != null) {
+            Vehicle vehicle = vehicleRepository.findById(vehicleId).orElse(null);
+            if (vehicle != null) {
+                vehicle.setLastLatitude(new BigDecimal(latStr));
+                vehicle.setLastLongitude(new BigDecimal(lngStr));
+                vehicle.setLastUpdatedTime(LocalDateTime.now());
+                vehicleRepository.save(vehicle);
+            }
         }
     }
 }

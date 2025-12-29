@@ -19,6 +19,9 @@ public class RoutingService {
 
     @Autowired
     private GraphHopper graphHopper;
+    
+    @Autowired
+    private org.springframework.data.redis.core.RedisTemplate<String, Object> redisTemplate;
 
     public RouteResult findOptimalRoute(BigDecimal fromLat, BigDecimal fromLng, 
                                        BigDecimal toLat, BigDecimal toLng, 
@@ -33,13 +36,22 @@ public class RoutingService {
     }
 
     public RouteResult findRouteForVehicle(Vehicle vehicle, BigDecimal toLat, BigDecimal toLng) {
-        if (vehicle.getLastLatitude() == null || vehicle.getLastLongitude() == null) {
+        // Get current position from Redis first, fallback to database
+        BigDecimal currentLat = getCurrentLatitude(vehicle.getVehicleId());
+        BigDecimal currentLng = getCurrentLongitude(vehicle.getVehicleId());
+        
+        if (currentLat == null || currentLng == null) {
+            // Fallback to database if Redis doesn't have current position
+            currentLat = vehicle.getLastLatitude();
+            currentLng = vehicle.getLastLongitude();
+        }
+        
+        if (currentLat == null || currentLng == null) {
             throw new RuntimeException("Vehicle location not available");
         }
         
         String profile = getProfileForVehicleType(vehicle.getVehicleType());
-        return calculateRoute(vehicle.getLastLatitude(), vehicle.getLastLongitude(), 
-                            toLat, toLng, profile);
+        return calculateRoute(currentLat, currentLng, toLat, toLng, profile);
     }
 
     private RouteResult calculateRoute(BigDecimal fromLat, BigDecimal fromLng, 
@@ -125,6 +137,18 @@ public class RoutingService {
 
     private String getProfileForVehicleType(VehicleType vehicleType) {
         return "emergency";
+    }
+    
+    private BigDecimal getCurrentLatitude(Integer vehicleId) {
+        String key = "vehicle:location:" + vehicleId;
+        String latStr = (String) redisTemplate.opsForHash().get(key, "latitude");
+        return latStr != null ? new BigDecimal(latStr) : null;
+    }
+    
+    private BigDecimal getCurrentLongitude(Integer vehicleId) {
+        String key = "vehicle:location:" + vehicleId;
+        String lngStr = (String) redisTemplate.opsForHash().get(key, "longitude");
+        return lngStr != null ? new BigDecimal(lngStr) : null;
     }
 
     public static class RouteResult {
