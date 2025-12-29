@@ -23,24 +23,25 @@ import java.util.List;
 @Service
 public class AssignmentService {
 
-    @Autowired
-    private AssignmentMapper assignmentMapper;
-
-    @Autowired
-    private IncidentRepository incidentRepository;
-
-    @Autowired
-    private WebSocketNotificationService webSocketNotificationService;
-
+    private final AssignmentMapper assignmentMapper;
+    private final IncidentRepository incidentRepository;
+    private final WebSocketNotificationService webSocketNotificationService;
     private final AssignmentRepository assignmentRepository;
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
 
-    public AssignmentService(AssignmentRepository assignmentRepository, UserRepository userRepository,
-                           VehicleRepository vehicleRepository) {
+    public AssignmentService(AssignmentRepository assignmentRepository, 
+                           UserRepository userRepository,
+                           VehicleRepository vehicleRepository,
+                           AssignmentMapper assignmentMapper,
+                           IncidentRepository incidentRepository,
+                           WebSocketNotificationService webSocketNotificationService) {
         this.assignmentRepository = assignmentRepository;
         this.userRepository = userRepository;
         this.vehicleRepository = vehicleRepository;
+        this.assignmentMapper = assignmentMapper;
+        this.incidentRepository = incidentRepository;
+        this.webSocketNotificationService = webSocketNotificationService;
     }
 
     @Transactional

@@ -26,8 +26,11 @@ import java.util.List;
 @SecurityRequirement(name = "bearerAuth")
 public class AssignmentController {
 
-    @Autowired
-    private AssignmentService assignmentService;
+    private final AssignmentService assignmentService;
+
+    public AssignmentController(AssignmentService assignmentService) {
+        this.assignmentService = assignmentService;
+    }
 
     @Operation(
             summary = "Get all assignments",

@@ -38,5 +38,12 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Integer>
                     """, nativeQuery = true)
     List<Assignment> findByAssignmentStatusIn(List<String> statuses);
 
+    @Query(value = """
+                    SELECT *
+                    FROM assignment
+                    WHERE assigned_at >= :startDate
+                    """, nativeQuery = true)
+    List<Assignment> findAssignmentsAfterDate(java.time.LocalDateTime startDate);
+
     void deleteByIncidentIncidentId(Integer incidentId);
 }

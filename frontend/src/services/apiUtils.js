@@ -27,18 +27,18 @@ export const getAuthHeaders = () => {
 export const handleResponse = async (response) => {
   const contentType = response.headers.get('content-type');
   let data;
-  
+
   if (contentType && contentType.includes('application/json')) {
     data = await response.json();
   } else {
     const text = await response.text();
     data = { message: text };
   }
-  
+
   if (!response.ok) {
     throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
   }
-  
+
   return data;
 };
 
@@ -56,4 +56,23 @@ export const buildQueryString = (params) => {
   });
   const queryString = queryParams.toString();
   return queryString ? `?${queryString}` : '';
+};
+
+/**
+ * Make an authenticated API request
+ * @param {string} method - HTTP method
+ * @param {string} url - Request URL
+ * @param {Object} [body] - Request body
+ * @returns {Promise<Object>} Response data
+ */
+export const authenticatedRequest = async (method, url, body = null) => {
+  const headers = getAuthHeaders();
+  const config = {
+    method,
+    headers,
+    ...(body && { body: JSON.stringify(body) })
+  };
+
+  const response = await fetch(url, config);
+  return handleResponse(response);
 };
