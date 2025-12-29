@@ -9,6 +9,7 @@ import com.example.auth.enums.IncidentStatus;
 import com.example.auth.mapper.IncidentMapper;
 import com.example.auth.repository.AssignmentRepository;
 import com.example.auth.repository.IncidentRepository;
+import com.example.auth.repository.NotificationRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,8 +26,7 @@ public class IncidentService {
     private final AssignmentRepository assignmentRepository;
     private final IncidentRepository incidentRepository;
     private final NotificationService notificationService;
-
-
+    private final NotificationRepository notificationRepository;
 
     @Transactional
     public void checkIncidentCompletion(Incident incident) {
@@ -43,34 +43,34 @@ public class IncidentService {
 
     @Transactional
     public List<IncidentResponse> getAcceptedIncidentsOrdered() {
-        List<Incident> incidents =  incidentRepository.findAllAcceptedIncidentsOrderedBySeverityLevelAndTimeReported();
+        List<Incident> incidents = incidentRepository.findAllAcceptedIncidentsOrderedBySeverityLevelAndTimeReported();
         return incidents.stream()
-                        .map(incidentMapper::toResponse)
-                        .toList();
+                .map(incidentMapper::toResponse)
+                .toList();
     }
 
     @Transactional
     public List<IncidentResponse> getResolvedIncidents() {
-        List <Incident> incidents =  incidentRepository.findAllResolvedIncidents();
+        List<Incident> incidents = incidentRepository.findAllResolvedIncidents();
         return incidents.stream()
-                        .map(incidentMapper::toResponse)
-                        .toList();
+                .map(incidentMapper::toResponse)
+                .toList();
     }
 
     @Transactional
     public List<IncidentResponse> getReportedIncidents() {
-        List<Incident> incidents =  incidentRepository.findAllReportedIncidents();
+        List<Incident> incidents = incidentRepository.findAllReportedIncidents();
         return incidents.stream()
-                        .map(incidentMapper::toResponse)
-                        .toList();
+                .map(incidentMapper::toResponse)
+                .toList();
     }
 
     @Transactional
     public List<IncidentResponse> getAllIncidents() {
-        List<Incident> incidents =  incidentRepository.findAll();
+        List<Incident> incidents = incidentRepository.findAll();
         return incidents.stream()
-                        .map(incidentMapper::toResponse)
-                        .toList();
+                .map(incidentMapper::toResponse)
+                .toList();
     }
 
     @Transactional
@@ -128,7 +128,7 @@ public class IncidentService {
         Incident updatedIncident = incidentRepository.save(incident);
 
         // Update notifications
-        if(previousStatus != IncidentStatus.REPORTED)
+        if (previousStatus != IncidentStatus.REPORTED)
             webSocketNotificationService.notifyReportedIncidentUpdate();
         webSocketNotificationService.notifyAcceptedIncidentUpdate();
 
@@ -171,12 +171,16 @@ public class IncidentService {
 
     @Transactional
     public void deleteIncident(Integer incidentId) {
-        Incident incident = incidentRepository.findById(incidentId)
+        // Verify incident exists
+        incidentRepository.findById(incidentId)
                 .orElseThrow(() -> new RuntimeException("Incident not found with id: " + incidentId));
-        
-        // Delete associated assignments first
+
+        // Delete associated notifications first
+        notificationRepository.deleteByRelatedIncidentIncidentId(incidentId);
+
+        // Delete associated assignments
         assignmentRepository.deleteByIncidentIncidentId(incidentId);
-        
+
         // Delete the incident (this will also delete the address due to cascade)
         incidentRepository.deleteById(incidentId);
     }

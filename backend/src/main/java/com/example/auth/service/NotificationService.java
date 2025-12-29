@@ -82,6 +82,12 @@ public class NotificationService {
     @Transactional
     public NotificationResponse updateIncidentResolvedNotification(Incident incident) {
         Notification notification = notificationRepository.findByRelatedIncidentId(incident.getIncidentId());
+
+        if (notification == null) {
+            // Create new notification if it doesn't exist
+            notification = createNewNotification(incident);
+        }
+
         notification.setIncidentResolved();
         notification = notificationRepository.save(notification);
         notifyWebSocket();
@@ -100,6 +106,12 @@ public class NotificationService {
     @Transactional
     public void saveUnassignedIncidentNotification(Incident incident) {
         Notification notification = notificationRepository.findByRelatedIncidentId(incident.getIncidentId());
+
+        if (notification == null) {
+            // Create new notification if it doesn't exist
+            notification = createNewNotification(incident);
+        }
+
         notification.setIncidentUnassigned();
         notificationRepository.save(notification);
     }

@@ -11,15 +11,17 @@ import java.util.List;
 @Repository
 public interface NotificationRepository extends JpaRepository<Notification, Long> {
 
-    @Query(value = """ 
-            SELECT * FROM notification n 
-            WHERE n.status = 'UNREAD' 
-            """, nativeQuery = true)
-    List<Notification> findAllUnreadNotifications();
+        @Query(value = """
+                        SELECT * FROM notification n
+                        WHERE n.status = 'UNREAD'
+                        """, nativeQuery = true)
+        List<Notification> findAllUnreadNotifications();
 
-    @Query(value = """
-            SELECT * FROM notification n
-            WHERE n.related_incident_id = :incidentId
-            """, nativeQuery = true)
-    Notification findByRelatedIncidentId(@Param("incidentId") Integer incidentId);
+        @Query(value = """
+                        SELECT * FROM notification n
+                        WHERE n.related_incident_id = :incidentId
+                        """, nativeQuery = true)
+        Notification findByRelatedIncidentId(@Param("incidentId") Integer incidentId);
+
+        void deleteByRelatedIncidentIncidentId(Integer incidentId);
 }
