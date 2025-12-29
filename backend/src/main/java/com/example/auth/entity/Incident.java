@@ -8,7 +8,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 
-
 @Entity
 @Table(name = "Incident")
 @NoArgsConstructor
@@ -49,9 +48,12 @@ public class Incident {
     private LocalDateTime timeResolved;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "life_cycle_status", nullable=false)
+    @Column(name = "life_cycle_status", nullable = false)
     @Builder.Default
     private IncidentStatus lifeCycleStatus = IncidentStatus.REPORTED;
+
+    @Column(name = "description", length = 1000)
+    private String description;
 
     public void setAssigned() {
         this.lifeCycleStatus = IncidentStatus.ASSIGNED;

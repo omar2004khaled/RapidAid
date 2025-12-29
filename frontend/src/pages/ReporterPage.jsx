@@ -1,10 +1,13 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import LocationPickerMap from '../Components/LocationPickerMap';
+import { useToast } from '../contexts/ToastContext';
+import incidentAPI from '../services/incidentAPI';
 import "../css/ReporterCss.css";
 
 function ReporterPage() {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useToast();
     const [formData, setFormData] = useState({
         name: '',
         phone: '',
@@ -29,11 +32,11 @@ function ReporterPage() {
         e.preventDefault();
         setLoading(true);
         setError('');
-        
+
         try {
             // Map form data to backend expected format
             let serviceType = formData.emergencyType.toUpperCase();
-            
+
             const incidentData = {
                 incidentType: serviceType,
                 address: {
@@ -51,38 +54,30 @@ function ReporterPage() {
                 severityLevel: 3, // Default medium severity
                 lifeCycleStatus: "REPORTED"
             };
-            
-            const response = await fetch('http://localhost:8080/api/public/incident/report', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify(incidentData)
-            });
-            
-            const result = await response.json();
-            
-            if (!response.ok) {
-                throw new Error(result.message || 'Failed to report emergency');
-            }
-            
+
+            const result = await incidentAPI.reportPublicIncident(incidentData);
+
             setSuccess(true);
-            alert('Emergency reported successfully! Our team will respond shortly.');
+            showSuccess('Emergency reported successfully! Our team will respond shortly.');
+
+            // Reset form but keep default coordinates
             setFormData({
                 name: '',
                 phone: '',
                 emergencyType: '',
                 location: '',
-                latitude: '',
-                longitude: '',
+                latitude: 30.0444,
+                longitude: 31.2357,
                 description: ''
             });
-            
+
             // Reset success message after 3 seconds
             setTimeout(() => setSuccess(false), 3000);
         } catch (err) {
             console.error('Error reporting emergency:', err);
-            setError(err.message || 'Failed to report emergency. Please try again.');
+            const errorMessage = err.message || 'Failed to report emergency. Please try again.';
+            setError(errorMessage);
+            showError(errorMessage);
         } finally {
             setLoading(false);
         }
@@ -93,7 +88,7 @@ function ReporterPage() {
             <div className="report-head">
                 <div className="header-content">
                     <h2>Report an Emergency</h2>
-                    <button 
+                    <button
                         onClick={() => navigate('/login')}
                         className="login-btn"
                     >
@@ -191,9 +186,9 @@ function ReporterPage() {
                             required
                         ></textarea>
                     </div>
-                    <button 
-                        type="submit" 
-                        className="submit-btn" 
+                    <button
+                        type="submit"
+                        className="submit-btn"
                         disabled={loading}
                         style={{ opacity: loading ? 0.6 : 1, cursor: loading ? 'not-allowed' : 'pointer' }}
                     >
@@ -201,7 +196,7 @@ function ReporterPage() {
                     </button>
                 </form>
             </div>
-            
+
             {/* Location Picker Modal */}
             {showLocationPicker && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
@@ -219,7 +214,7 @@ function ReporterPage() {
                             <LocationPickerMap
                                 initialPosition={[formData.latitude, formData.longitude]}
                                 onLocationSelect={(lat, lng) => {
-                                    setFormData({...formData, latitude: lat, longitude: lng});
+                                    setFormData({ ...formData, latitude: lat, longitude: lng });
                                     setShowLocationPicker(false);
                                 }}
                             />

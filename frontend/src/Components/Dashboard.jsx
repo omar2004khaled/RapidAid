@@ -10,11 +10,15 @@ import '../css/DispatcherCss.css';
 import MapPage from "../pages/MapPage";
 import LocationPickerMap from './LocationPickerMap';
 import AnalyticsPage from "../pages/AnalyticsPage";
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { showSuccess, showError, showWarning } = useToast();
+  const { confirm } = useConfirm();
   const [activeTab, setActiveTab] = useState('incidents');
   const [admins, setAdmins] = useState([]);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
@@ -157,7 +161,9 @@ const Dashboard = () => {
       id: vehicle.vehicleId,
       type: vehicle.vehicleType || vehicle.type || 'Unknown',
       count: 1,
-      location: vehicle.stationName || 'Unknown',
+      location: vehicle.lastLatitude && vehicle.lastLongitude
+        ? `${vehicle.lastLatitude}, ${vehicle.lastLongitude}`
+        : 'Location not set',
       status: vehicle.status || 'Active'
     }));
     setEmergencyUnits(units);
@@ -191,35 +197,35 @@ const Dashboard = () => {
   const addAdmin = async () => {
     // Frontend validation
     if (!newAdmin.name || newAdmin.name.trim().length < 2) {
-      alert('Name must be at least 2 characters long');
+      showError('Name must be at least 2 characters long');
       return;
     }
 
     const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     if (!newAdmin.email || !emailRegex.test(newAdmin.email)) {
-      alert('Please enter a valid email address');
+      showError('Please enter a valid email address');
       return;
     }
 
     // Password validation
     if (!newAdmin.password || newAdmin.password.length < 8 || newAdmin.password.length > 20) {
-      alert('Password must be between 8-20 characters long');
+      showError('Password must be between 8-20 characters long');
       return;
     }
     if (!/[A-Z]/.test(newAdmin.password)) {
-      alert('Password must contain at least one uppercase letter');
+      showError('Password must contain at least one uppercase letter');
       return;
     }
     if (!/[a-z]/.test(newAdmin.password)) {
-      alert('Password must contain at least one lowercase letter');
+      showError('Password must contain at least one lowercase letter');
       return;
     }
     if (!/[0-9]/.test(newAdmin.password)) {
-      alert('Password must contain at least one number');
+      showError('Password must contain at least one number');
       return;
     }
     if (!/[!@#$%^&*()_+\-=\[\]{};':.,<>?]/.test(newAdmin.password)) {
-      alert('Password must contain at least one special character (!@#$%^&*)');
+      showError('Password must contain at least one special character (!@#$%^&*)');
       return;
     }
 
@@ -229,30 +235,36 @@ const Dashboard = () => {
         email: newAdmin.email.trim().toLowerCase(),
         password: newAdmin.password
       });
-      alert('Admin created successfully!');
+      showSuccess('Admin created successfully!');
       setNewAdmin({ name: '', email: '', password: '' });
       fetchAdmins();
     } catch (error) {
       console.error('Error creating admin:', error);
-      alert(error.message || 'Failed to create admin');
+      showError(error.message || 'Failed to create admin');
     }
   };
 
+
   const removeAdmin = async (adminId) => {
+    const confirmed = await confirm('Are you sure you want to remove this admin? This action cannot be undone.', 'Remove Admin');
+    if (!confirmed) {
+      return;
+    }
+
     try {
-      // TODO: Backend endpoint for demoting admin doesn't exist yet
-      // For now, just show a message
-      alert('Admin removal feature is not yet implemented in the backend');
-      // await adminAPI.demoteAdmin(adminId);
-      // fetchAdmins();
+      await adminAPI.demoteAdmin(adminId);
+      showSuccess('Admin removed successfully!');
+      fetchAdmins();
     } catch (error) {
       console.error('Error removing admin:', error);
+      showError(error.message || 'Failed to remove admin');
     }
   };
+
 
   const addUnit = async () => {
     if (!newUnit.type || newUnit.count <= 0) {
-      alert('Please fill in all fields with valid values');
+      showError('Please fill in all fields with valid values');
       return;
     }
 
@@ -289,7 +301,7 @@ const Dashboard = () => {
         }
       }
 
-      alert('Units created successfully!');
+      showSuccess('Units created successfully!');
 
       // Force initialize all vehicles in Redis after creation
       try {
@@ -306,7 +318,7 @@ const Dashboard = () => {
       fetchUnits();
     } catch (error) {
       console.error('Error adding unit:', error);
-      alert(error.message || 'Failed to create unit');
+      showError(error.message || 'Failed to create unit');
     }
   };
 
@@ -318,14 +330,14 @@ const Dashboard = () => {
       const result = await response.json();
 
       if (response.ok) {
-        alert('Unit removed successfully!');
+        showSuccess('Unit removed successfully!');
         fetchUnits();
       } else {
-        alert('Failed to remove unit: ' + result.error);
+        showError('Failed to remove unit: ' + result.error);
       }
     } catch (error) {
       console.error('Error removing unit:', error);
-      alert('Failed to remove unit');
+      showError('Failed to remove unit');
     }
   };
 
@@ -336,7 +348,7 @@ const Dashboard = () => {
       await fetchIncidents();
     } catch (error) {
       console.error('Error updating incident status:', error);
-      alert('Failed to update incident status: ' + error.message);
+      showError('Failed to update incident status: ' + error.message);
     }
   };
 
@@ -353,23 +365,23 @@ const Dashboard = () => {
   const approveUser = async (userId) => {
     try {
       await adminAPI.approveUser(userId);
-      alert('User approved successfully!');
+      showSuccess('User approved successfully!');
       fetchPendingUsers();
       fetchAdmins(); // Refresh admin list to show newly approved user
     } catch (error) {
       console.error('Error approving user:', error);
-      alert('Failed to approve user: ' + error.message);
+      showError('Failed to approve user: ' + error.message);
     }
   };
 
   const rejectUser = async (userId) => {
     try {
       await adminAPI.rejectUser(userId);
-      alert('User rejected successfully!');
+      showSuccess('User rejected successfully!');
       fetchPendingUsers();
     } catch (error) {
       console.error('Error rejecting user:', error);
-      alert('Failed to reject user: ' + error.message);
+      showError('Failed to reject user: ' + error.message);
     }
   };
 
@@ -392,14 +404,14 @@ const Dashboard = () => {
         vehicleId: vehicleId,
         assignedByUserId: userInfo?.userId || 1
       });
-      alert('Vehicle assigned successfully!');
+      showSuccess('Vehicle assigned successfully!');
       setShowAssignModal(false);
       setSelectedIncident(null);
       fetchIncidents();
       fetchUnits();
     } catch (error) {
       console.error('Error assigning vehicle:', error);
-      alert('Failed to assign vehicle: ' + error.message);
+      showError('Failed to assign vehicle: ' + error.message);
     }
   };
 
@@ -486,9 +498,10 @@ const Dashboard = () => {
                     <span className="emergency-state">{getPriorityLabel(incident.severityLevel)}</span>
                   </div>
                   <p>
-                    <strong>Location:</strong> {incident.latitude && incident.longitude
-                      ? `${incident.latitude}, ${incident.longitude}`
-                      : 'Location not specified'}
+                    <strong>Location:</strong> {incident.address?.street || 'Location not specified'}
+                    {incident.address?.latitude && incident.address?.longitude &&
+                      ` (${incident.address.latitude}, ${incident.address.longitude})`
+                    }
                   </p>
                   <p><strong>Description:</strong> {incident.description || 'No description provided'}</p>
                   <p><strong>Reported:</strong> {new Date(incident.timeReported).toLocaleString()}</p>
@@ -498,7 +511,7 @@ const Dashboard = () => {
                       <select
                         value={incident.lifeCycleStatus}
                         onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
-                        className={`border rounded px-3 py-1 text-sm ${incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-50 border-green-300' :
+                        className={`border rounded px-3 py-1 pr-8 text-sm ${incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-50 border-green-300' :
                           incident.lifeCycleStatus === 'ASSIGNED' ? 'bg-blue-50 border-blue-300' :
                             incident.lifeCycleStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
                               'bg-gray-50 border-gray-300'
@@ -507,7 +520,7 @@ const Dashboard = () => {
                         <option value="REPORTED">Reported</option>
                         <option value="ASSIGNED">Assigned</option>
                         <option value="RESOLVED">Resolved</option>
-                        <option value="CANCELLED">Cancelled</option>
+                        {/* <option value="CANCELLED">Cancelled</option> */}
                       </select>
                     </div>
                     {incident.lifeCycleStatus === 'REPORTED' && (
@@ -520,15 +533,14 @@ const Dashboard = () => {
                     )}
                     <button
                       onClick={async () => {
-                        if (confirm('Are you sure you want to delete this incident?')) {
+                        const confirmed = await confirm('Are you sure you want to delete this incident?', 'Delete Incident');
+                        if (confirmed) {
                           try {
-                            await fetch(`http://localhost:8080/api/incident/delete/${incident.incidentId}`, {
-                              method: 'DELETE',
-                              headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
-                            });
+                            await incidentAPI.deleteIncident(incident.incidentId);
+                            showSuccess('Incident deleted successfully');
                             fetchIncidents();
                           } catch (error) {
-                            alert('Failed to delete incident');
+                            showError('Failed to delete incident');
                           }
                         }
                       }}
@@ -733,9 +745,9 @@ const Dashboard = () => {
                         method: 'POST'
                       });
                       const result = await response.json();
-                      alert(result.message);
+                      showSuccess(result.message);
                     } catch (error) {
-                      alert('Failed to initialize vehicles in Redis');
+                      showError('Failed to initialize vehicles in Redis');
                     }
                   }}
                   className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"

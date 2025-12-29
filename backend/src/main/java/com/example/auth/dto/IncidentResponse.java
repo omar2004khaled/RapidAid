@@ -22,5 +22,6 @@ public class IncidentResponse {
     private LocalDateTime timeReported;
     private LocalDateTime timeAssigned;
     private LocalDateTime timeResolved;
+    private String description;
     private IncidentStatus lifeCycleStatus;
 }
