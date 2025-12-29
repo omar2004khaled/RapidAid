@@ -33,10 +33,10 @@ public class Address {
     @Column(name = "apartment_no", length = 100)
     private String apartmentNo;
 
-    @Column(name = "latitude")
+    @Column(name = "latitude", precision = 10, scale = 8)
     private BigDecimal latitude;
 
-    @Column(name = "longitude")
+    @Column(name = "longitude", precision = 11, scale = 8)
     private BigDecimal longitude;
 
 }

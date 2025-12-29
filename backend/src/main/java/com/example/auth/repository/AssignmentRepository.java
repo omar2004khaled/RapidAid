@@ -37,4 +37,6 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Integer>
                     WHERE assignment_status IN (:statuses)
                     """, nativeQuery = true)
     List<Assignment> findByAssignmentStatusIn(List<String> statuses);
+
+    void deleteByIncidentIncidentId(Integer incidentId);
 }

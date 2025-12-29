@@ -22,23 +22,6 @@ const vehicleAPI = {
   },
 
   /**
-   * Update vehicle status
-   * PUT /api/vehicle/update-status
-   * @param {number} vehicleId - Vehicle ID
-   * @param {string} status - New status (AVAILABLE, BUSY, MAINTENANCE, OUT_OF_SERVICE)
-   * @returns {Promise<Object>} Updated vehicle
-   */
-  updateStatus: async (vehicleId, status) => {
-    const queryString = buildQueryString({ vehicleId, status });
-    const response = await fetch(`${API_BASE_URL}/api/vehicle/update-status${queryString}`, {
-      method: 'PUT',
-      headers: getAuthHeaders(),
-      mode: 'cors'
-    });
-    return handleResponse(response);
-  },
-
-  /**
    * Get vehicles by status
    * GET /api/vehicle/by-status
    * @param {string} status - Vehicle status (AVAILABLE, BUSY, MAINTENANCE, OUT_OF_SERVICE)
@@ -47,6 +30,20 @@ const vehicleAPI = {
   getVehiclesByStatus: async (status) => {
     const queryString = buildQueryString({ status });
     const response = await fetch(`${API_BASE_URL}/api/vehicle/by-status${queryString}`, {
+      method: 'GET',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
+  },
+
+  /**
+   * Get all vehicles
+   * GET /api/vehicle/all (assuming this endpoint exists)
+   * @returns {Promise<Array>} List of all vehicles
+   */
+  getAllVehicles: async () => {
+    const response = await fetch(`${API_BASE_URL}/api/vehicle/all`, {
       method: 'GET',
       headers: getAuthHeaders(),
       mode: 'cors'
@@ -71,16 +68,15 @@ const vehicleAPI = {
   },
 
   /**
-   * Update vehicle location
-   * PUT /api/vehicle/{vehicleId}/location
+   * Update vehicle status
+   * PUT /api/vehicle/update-status
    * @param {number} vehicleId - Vehicle ID
-   * @param {number} latitude - Latitude coordinate
-   * @param {number} longitude - Longitude coordinate
-   * @returns {Promise<string>} Update confirmation message
+   * @param {string} status - New status (AVAILABLE, BUSY, MAINTENANCE, OUT_OF_SERVICE)
+   * @returns {Promise<Object>} Updated vehicle
    */
-  updateLocation: async (vehicleId, latitude, longitude) => {
-    const queryString = buildQueryString({ latitude, longitude });
-    const response = await fetch(`${API_BASE_URL}/api/vehicle/${vehicleId}/location${queryString}`, {
+  updateStatus: async (vehicleId, status) => {
+    const queryString = buildQueryString({ vehicleId, status });
+    const response = await fetch(`${API_BASE_URL}/api/vehicle/update-status${queryString}`, {
       method: 'PUT',
       headers: getAuthHeaders(),
       mode: 'cors'

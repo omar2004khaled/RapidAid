@@ -188,6 +188,16 @@ public class VehicleController {
     }
 
     @Operation(
+            summary = "Get all vehicles",
+            description = "Retrieves a list of all vehicles in the system."
+    )
+    @GetMapping("/all")
+    public ResponseEntity<List<VehicleResponse>> getAllVehicles() {
+        List<VehicleResponse> vehicles = vehicleService.getAllVehicles();
+        return ResponseEntity.ok(vehicles);
+    }
+
+    @Operation(
             summary = "Calculate route for vehicle",
             description = "Calculates and stores route for vehicle to target location using GraphHopper."
     )

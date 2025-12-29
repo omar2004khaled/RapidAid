@@ -179,12 +179,16 @@ public class AssignmentService {
                     .orElseThrow(() -> new RuntimeException("User not found with id: " + assignmentRequest.getAssignedByUserId())));
         }
 
-        Assignment savedAssignment = assignmentRepository.save(assignment);
-
-        // Update incident status and assigned time
+        // Update incident status before saving assignment
         Incident incident = assignment.getIncident();
         incident.setAssigned();
         incidentRepository.save(incident);
+
+        // Set assignment status and timestamp
+        assignment.setAssignmentStatus(AssignmentStatus.ASSIGNED);
+        assignment.setAssignedAt(LocalDateTime.now());
+
+        Assignment savedAssignment = assignmentRepository.save(assignment);
 
         // Update vehicle status to ON_ROUTE
         Vehicle vehicle = assignment.getVehicle();

@@ -44,34 +44,83 @@ public class RoutingService {
 
     private RouteResult calculateRoute(BigDecimal fromLat, BigDecimal fromLng, 
                                      BigDecimal toLat, BigDecimal toLng, String profile) {
-        GHRequest request = new GHRequest(
-            fromLat.doubleValue(), fromLng.doubleValue(),
-            toLat.doubleValue(), toLng.doubleValue()
-        );
-        request.setProfile(profile);
-        
-        GHResponse response = graphHopper.route(request);
-        
-        if (response.hasErrors()) {
-            throw new RuntimeException("Routing error: " + response.getErrors());
+        try {
+            // Snap coordinates to nearest roads
+            double[] snappedFrom = snapToRoad(fromLat.doubleValue(), fromLng.doubleValue());
+            double[] snappedTo = snapToRoad(toLat.doubleValue(), toLng.doubleValue());
+            
+            GHRequest request = new GHRequest(
+                snappedFrom[0], snappedFrom[1],
+                snappedTo[0], snappedTo[1]
+            );
+            request.setProfile(profile);
+            
+            GHResponse response = graphHopper.route(request);
+            
+            if (response.hasErrors()) {
+                throw new RuntimeException("Routing error: " + response.getErrors());
+            }
+            
+            ResponsePath path = response.getBest();
+            PointList pointList = path.getPoints();
+            
+            List<RoutePoint> routePoints = new ArrayList<>();
+            for (int i = 0; i < pointList.size(); i++) {
+                routePoints.add(new RoutePoint(
+                    BigDecimal.valueOf(pointList.getLat(i)),
+                    BigDecimal.valueOf(pointList.getLon(i))
+                ));
+            }
+            
+            return new RouteResult(
+                routePoints,
+                path.getDistance() / 1000.0,
+                path.getTime() / 1000.0
+            );
+        } catch (Exception e) {
+            // Fallback to straight line if routing fails
+            List<RoutePoint> fallbackPoints = new ArrayList<>();
+            fallbackPoints.add(new RoutePoint(fromLat, fromLng));
+            fallbackPoints.add(new RoutePoint(toLat, toLng));
+            
+            double distance = calculateDistance(fromLat.doubleValue(), fromLng.doubleValue(), 
+                                              toLat.doubleValue(), toLng.doubleValue());
+            double time = distance * 60; // Assume 1 km/min speed
+            
+            return new RouteResult(fallbackPoints, distance, time);
+        }
+    }
+    
+    private double[] snapToRoad(double lat, double lng) {
+        try {
+            // Use GraphHopper's map matching to snap to nearest road
+            GHRequest request = new GHRequest(lat, lng, lat, lng);
+            request.setProfile("emergency");
+            GHResponse response = graphHopper.route(request);
+            
+            if (!response.hasErrors() && response.getBest() != null) {
+                PointList points = response.getBest().getPoints();
+                if (points.size() > 0) {
+                    return new double[]{points.getLat(0), points.getLon(0)};
+                }
+            }
+        } catch (Exception e) {
+            // Ignore snapping errors
         }
         
-        ResponsePath path = response.getBest();
-        PointList pointList = path.getPoints();
-        
-        List<RoutePoint> routePoints = new ArrayList<>();
-        for (int i = 0; i < pointList.size(); i++) {
-            routePoints.add(new RoutePoint(
-                BigDecimal.valueOf(pointList.getLat(i)),
-                BigDecimal.valueOf(pointList.getLon(i))
-            ));
-        }
-        
-        return new RouteResult(
-            routePoints,
-            path.getDistance() / 1000.0, // Convert to km
-            path.getTime() / 1000.0      // Convert to seconds
-        );
+        // Return original coordinates if snapping fails
+        return new double[]{lat, lng};
+    }
+    
+    private double calculateDistance(double lat1, double lng1, double lat2, double lng2) {
+        final int R = 6371; // Earth radius in km
+        double latDistance = Math.toRadians(lat2 - lat1);
+        double lngDistance = Math.toRadians(lng2 - lng1);
+        double a = Math.sin(latDistance / 2) * Math.sin(latDistance / 2)
+                + Math.cos(Math.toRadians(lat1)) * Math.cos(Math.toRadians(lat2))
+                * Math.sin(lngDistance / 2) * Math.sin(lngDistance / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return R * c;
     }
 
     private String getProfileForVehicleType(VehicleType vehicleType) {

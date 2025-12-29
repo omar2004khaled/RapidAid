@@ -114,6 +114,15 @@ public class VehicleService {
         Vehicle vehicle = vehicleMapper.toEntity(vehicleRequest);
         Vehicle savedVehicle = vehicleRepository.save(vehicle);
 
+        // Initialize location in Redis
+        if (savedVehicle.getLastLatitude() != null && savedVehicle.getLastLongitude() != null) {
+            vehicleLocationService.saveLocationToRedis(
+                savedVehicle.getVehicleId(), 
+                savedVehicle.getLastLatitude(), 
+                savedVehicle.getLastLongitude()
+            );
+        }
+
         List<VehicleResponse> availableVehicles = getAvailableVehicles();
         webSocketNotificationService.notifyAvailableVehicleUpdate(availableVehicles);
         return vehicleMapper.toResponse(savedVehicle);
@@ -122,6 +131,12 @@ public class VehicleService {
     @Transactional(readOnly = true)
     public List<VehicleResponse> getAvailableVehicles() {
         List<Vehicle> vehicles = vehicleRepository.findByStatus("AVAILABLE");
+        return vehicles.stream().map(vehicleMapper::toResponse).collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
+    public List<VehicleResponse> getAllVehicles() {
+        List<Vehicle> vehicles = vehicleRepository.findAll();
         return vehicles.stream().map(vehicleMapper::toResponse).collect(Collectors.toList());
     }
 

@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { useNavigate } from "react-router-dom";
+import LocationPickerMap from '../Components/LocationPickerMap';
 import "../css/ReporterCss.css";
-import incidentAPI from '../services/incidentAPI';
 
 function ReporterPage() {
     const navigate = useNavigate();
@@ -10,13 +10,14 @@ function ReporterPage() {
         phone: '',
         emergencyType: '',
         location: '',
-        latitude: '',
-        longitude: '',
+        latitude: 30.0444,
+        longitude: 31.2357,
         description: ''
     });
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState(false);
+    const [showLocationPicker, setShowLocationPicker] = useState(false);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -37,7 +38,7 @@ function ReporterPage() {
                 incidentType: serviceType,
                 address: {
                     street: formData.location,
-                    city: "Unknown",
+                    city: "Cairo",
                     neighborhood: "Unknown",
                     buildingNo: "N/A",
                     apartmentNo: "N/A",
@@ -51,7 +52,19 @@ function ReporterPage() {
                 lifeCycleStatus: "REPORTED"
             };
             
-            await incidentAPI.createIncident(incidentData);
+            const response = await fetch('http://localhost:8080/api/public/incident/report', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify(incidentData)
+            });
+            
+            const result = await response.json();
+            
+            if (!response.ok) {
+                throw new Error(result.message || 'Failed to report emergency');
+            }
             
             setSuccess(true);
             alert('Emergency reported successfully! Our team will respond shortly.');
@@ -152,30 +165,19 @@ function ReporterPage() {
                         />
                     </div>
                     <div className="form-group">
-                        <label htmlFor="latitude">Latitude</label>
-                        <input
-                            type="number"
-                            step="any"
-                            id="latitude"
-                            name="latitude"
-                            value={formData.latitude}
-                            onChange={handleChange}
-                            placeholder="Enter the emergency latitude"
-                            required
-                        />
-                    </div>
-                    <div className="form-group">
-                        <label htmlFor="longitude">Longitude</label>
-                        <input
-                            type="number"
-                            step="any"
-                            id="longitude"
-                            name="longitude"
-                            value={formData.longitude}
-                            onChange={handleChange}
-                            placeholder="Enter the emergency longitude"
-                            required
-                        />
+                        <label>Emergency Location</label>
+                        <div className="flex items-center space-x-2">
+                            <button
+                                type="button"
+                                onClick={() => setShowLocationPicker(true)}
+                                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+                            >
+                                Pick Location on Map
+                            </button>
+                            <span className="text-sm text-gray-600">
+                                Lat: {formData.latitude.toFixed(4)}, Lng: {formData.longitude.toFixed(4)}
+                            </span>
+                        </div>
                     </div>
                     <div className="form-group">
                         <label htmlFor="description">Description</label>
@@ -199,6 +201,40 @@ function ReporterPage() {
                     </button>
                 </form>
             </div>
+            
+            {/* Location Picker Modal */}
+            {showLocationPicker && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+                    <div className="bg-white rounded-lg p-6 w-4/5 h-4/5 max-w-4xl">
+                        <div className="flex justify-between items-center mb-4">
+                            <h3 className="text-lg font-semibold">Pick Emergency Location</h3>
+                            <button
+                                onClick={() => setShowLocationPicker(false)}
+                                className="text-gray-500 hover:text-gray-700"
+                            >
+                                ✕
+                            </button>
+                        </div>
+                        <div className="h-96 mb-4">
+                            <LocationPickerMap
+                                initialPosition={[formData.latitude, formData.longitude]}
+                                onLocationSelect={(lat, lng) => {
+                                    setFormData({...formData, latitude: lat, longitude: lng});
+                                    setShowLocationPicker(false);
+                                }}
+                            />
+                        </div>
+                        <div className="flex justify-end space-x-2">
+                            <button
+                                onClick={() => setShowLocationPicker(false)}
+                                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                            >
+                                Cancel
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }

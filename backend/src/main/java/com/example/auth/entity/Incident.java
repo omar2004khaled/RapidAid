@@ -9,8 +9,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 
-@Table(name = "Incident")
 @Entity
+@Table(name = "Incident")
 @NoArgsConstructor
 @AllArgsConstructor
 @Getter

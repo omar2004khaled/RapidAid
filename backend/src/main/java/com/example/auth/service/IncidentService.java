@@ -167,4 +167,16 @@ public class IncidentService {
 
         return present;
     }
+
+    @Transactional
+    public void deleteIncident(Integer incidentId) {
+        Incident incident = incidentRepository.findById(incidentId)
+                .orElseThrow(() -> new RuntimeException("Incident not found with id: " + incidentId));
+        
+        // Delete associated assignments first
+        assignmentRepository.deleteByIncidentIncidentId(incidentId);
+        
+        // Delete the incident (this will also delete the address due to cascade)
+        incidentRepository.deleteById(incidentId);
+    }
 }

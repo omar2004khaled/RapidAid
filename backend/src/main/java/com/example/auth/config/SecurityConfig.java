@@ -42,6 +42,8 @@ public class SecurityConfig {
                             "/api/profiles/**",
                             "/api/locations/**",
                             "/api/company/**",
+                            "/test/**",
+                            "/debug/**",
                             "/ws/**",
                             "/api/incident/**",
                             "/api/assignment/**",
