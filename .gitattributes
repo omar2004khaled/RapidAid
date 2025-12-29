@@ -1,1 +1,2 @@
 backend/src/main/resources/egypt-251228.osm.pbf filter=lfs diff=lfs merge=lfs -text
+*.osm.pbf filter=lfs diff=lfs merge=lfs -text
