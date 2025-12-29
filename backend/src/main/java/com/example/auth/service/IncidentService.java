@@ -9,6 +9,7 @@ import com.example.auth.enums.IncidentStatus;
 import com.example.auth.mapper.IncidentMapper;
 import com.example.auth.repository.AssignmentRepository;
 import com.example.auth.repository.IncidentRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,22 +17,16 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class IncidentService {
 
     private final IncidentMapper incidentMapper;
     private final WebSocketNotificationService webSocketNotificationService;
     private final AssignmentRepository assignmentRepository;
     private final IncidentRepository incidentRepository;
+    private final NotificationService notificationService;
 
-    public IncidentService(AssignmentRepository assignmentRepository,
-                          IncidentRepository incidentRepository,
-                          IncidentMapper incidentMapper,
-                          WebSocketNotificationService webSocketNotificationService) {
-        this.assignmentRepository = assignmentRepository;
-        this.incidentRepository = incidentRepository;
-        this.incidentMapper = incidentMapper;
-        this.webSocketNotificationService = webSocketNotificationService;
-    }
+
 
     @Transactional
     public void checkIncidentCompletion(Incident incident) {
@@ -87,6 +82,9 @@ public class IncidentService {
 
         // Notify via WebSocket
         webSocketNotificationService.notifyReportedIncidentUpdate();
+
+        // Create a notification for the new incident
+        notificationService.createNewIncidentNotification(savedIncident);
 
         return incidentMapper.toResponse(savedIncident);
     }
@@ -152,6 +150,9 @@ public class IncidentService {
         incident.setLifeCycleStatus(IncidentStatus.RESOLVED);
         incident.setTimeResolved(LocalDateTime.now());
         Incident updatedIncident = incidentRepository.save(incident);
+
+        // Create a new notification for the resolved incident
+        notificationService.updateIncidentResolvedNotification(updatedIncident);
 
         return incidentMapper.toResponse(updatedIncident);
     }

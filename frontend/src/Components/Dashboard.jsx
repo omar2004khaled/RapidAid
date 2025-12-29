@@ -9,6 +9,7 @@ import websocketService from '../services/websocketService';
 import '../css/DispatcherCss.css';
 import MapPage from "../pages/MapPage";
 import LocationPickerMap from './LocationPickerMap';
+import Notification  from './Notification';
 
 
 const Dashboard = () => {
@@ -30,7 +31,7 @@ const Dashboard = () => {
   const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
-  
+
   const incidentReportedSubscriptionRef = useRef(null);
   const incidentAcceptedSubscriptionRef = useRef(null);
   const vehicleSubscriptionRef = useRef(null);
@@ -46,13 +47,13 @@ const Dashboard = () => {
 
   useEffect(() => {
     fetchData();
-    
+
     // Connect to WebSocket
     websocketService.connect(
       'http://localhost:8080/ws',
       () => {
         console.log('[Dashboard] Connected to WebSocket');
-        
+
         const refreshIncidents = () => {
             console.log('[Dashboard] Incident update received, refreshing...');
             fetchIncidents();
@@ -61,7 +62,7 @@ const Dashboard = () => {
         // Subscribe to incident updates
         incidentReportedSubscriptionRef.current = websocketService.subscribe('/topic/incident/reported', refreshIncidents);
         incidentAcceptedSubscriptionRef.current = websocketService.subscribe('/topic/incident/accepted', refreshIncidents);
-        
+
         // Subscribe to vehicle updates
         vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicle/available', (data) => {
           console.log('[Dashboard] Vehicle update received:', data);
@@ -72,7 +73,7 @@ const Dashboard = () => {
         console.error('[Dashboard] WebSocket connection error:', error);
       }
     );
-    
+
     // Cleanup on unmount
     return () => {
       if (incidentReportedSubscriptionRef.current) websocketService.unsubscribe(incidentReportedSubscriptionRef.current);
@@ -94,7 +95,7 @@ const Dashboard = () => {
     } else {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('authToken');
-      
+
       if (storedUser) {
         const parsedUser = JSON.parse(storedUser);
         setUserInfo(parsedUser);
@@ -193,13 +194,13 @@ const Dashboard = () => {
       alert('Name must be at least 2 characters long');
       return;
     }
-    
+
     const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     if (!newAdmin.email || !emailRegex.test(newAdmin.email)) {
       alert('Please enter a valid email address');
       return;
     }
-    
+
     // Password validation
     if (!newAdmin.password || newAdmin.password.length < 8 || newAdmin.password.length > 20) {
       alert('Password must be between 8-20 characters long');
@@ -254,7 +255,7 @@ const Dashboard = () => {
       alert('Please fill in all fields with valid values');
       return;
     }
-    
+
     try {
       for (let i = 0; i < newUnit.count; i++) {
         const vehicleData = {
@@ -265,9 +266,9 @@ const Dashboard = () => {
             lastLatitude: parseFloat(newUnit.latitude.toFixed(6)),
             lastLongitude: parseFloat(newUnit.longitude.toFixed(6))
         };
-        
+
         const createdVehicle = await vehicleAPI.createVehicle(vehicleData);
-        
+
         // Initialize vehicle location in Redis
         if (createdVehicle.vehicleId) {
           try {
@@ -276,7 +277,7 @@ const Dashboard = () => {
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               body: `latitude=${vehicleData.lastLatitude}&longitude=${vehicleData.lastLongitude}`
             });
-            
+
             if (redisResponse.ok) {
               console.log(`Vehicle ${createdVehicle.vehicleId} added to Redis successfully`);
             } else {
@@ -287,9 +288,9 @@ const Dashboard = () => {
           }
         }
       }
-      
+
       alert('Units created successfully!');
-      
+
       // Force initialize all vehicles in Redis after creation
       try {
         const response = await fetch('http://localhost:8080/test/vehicle-location/init-all-vehicles', {
@@ -300,7 +301,7 @@ const Dashboard = () => {
       } catch (error) {
         console.error('Failed to initialize vehicles in Redis:', error);
       }
-      
+
       setNewUnit({ type: 'AMBULANCE', count: 0, latitude: 30.0444, longitude: 31.2357 });
       fetchUnits();
     } catch (error) {
@@ -315,7 +316,7 @@ const Dashboard = () => {
         method: 'DELETE'
       });
       const result = await response.json();
-      
+
       if (response.ok) {
         alert('Unit removed successfully!');
         fetchUnits();
@@ -408,52 +409,55 @@ const Dashboard = () => {
         <div className="max-w-7xl mx-auto px-4">
           <div className="flex justify-between items-center py-4">
             <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-            <div className="relative profile-dropdown">
-              <button 
-                onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
-              >
-                <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                  {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : 
-                   userInfo?.email ? userInfo.email.charAt(0).toUpperCase() : 
-                   userInfo?.sub ? userInfo.sub.charAt(0).toUpperCase() : 'U'}
-                </div>
-                <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                </svg>
-              </button>
-              
-              {showProfileDropdown && (
-                <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                  <div className="p-4 border-b border-gray-200">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                        {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() : 
-                         userInfo?.email ? userInfo.email.charAt(0).toUpperCase() : 
-                         userInfo?.sub ? userInfo.sub.charAt(0).toUpperCase() : 'U'}
-                      </div>
-                      <div>
-                        <p className="font-semibold text-gray-800">{userInfo?.name || userInfo?.sub || 'User'}</p>
-                        <p className="text-sm text-gray-600">{userInfo?.email || userInfo?.username || 'No email'}</p>
+            <div className="flex items-center space-x-6">
+              <Notification />
+              <div className="relative profile-dropdown">
+                <button
+                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+                  className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
+                >
+                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
+                    {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() :
+                     userInfo?.email ? userInfo.email.charAt(0).toUpperCase() :
+                     userInfo?.sub ? userInfo.sub.charAt(0).toUpperCase() : 'U'}
+                  </div>
+                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {showProfileDropdown && (
+                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                    <div className="p-4 border-b border-gray-200">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
+                          {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() :
+                           userInfo?.email ? userInfo.email.charAt(0).toUpperCase() :
+                           userInfo?.sub ? userInfo.sub.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-gray-800">{userInfo?.name || userInfo?.sub || 'User'}</p>
+                          <p className="text-sm text-gray-600">{userInfo?.email || userInfo?.username || 'No email'}</p>
+                        </div>
                       </div>
                     </div>
+                    <div className="p-2">
+                      <button
+                        onClick={() => {
+                          localStorage.clear();
+                          navigate('/login');
+                        }}
+                        className="w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 rounded flex items-center space-x-2"
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
+                        </svg>
+                        <span>Logout</span>
+                      </button>
+                    </div>
                   </div>
-                  <div className="p-2">
-                    <button 
-                      onClick={() => {
-                        localStorage.clear();
-                        navigate('/login');
-                      }}
-                      className="w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 rounded flex items-center space-x-2"
-                    >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                      </svg>
-                      <span>Logout</span>
-                    </button>
-                  </div>
-                </div>
-              )}
+                )}
+              </div>
             </div>
           </div>
           <nav className="flex space-x-8">
@@ -462,8 +466,8 @@ const Dashboard = () => {
                 key={tab}
                 onClick={() => setActiveTab(tab)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm capitalize ${
-                  activeTab === tab 
-                    ? 'border-blue-500 text-blue-600' 
+                  activeTab === tab
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700'
                 }`}
               >
@@ -486,8 +490,8 @@ const Dashboard = () => {
                     <span className="emergency-state">{getPriorityLabel(incident.severityLevel)}</span>
                   </div>
                   <p>
-                    <strong>Location:</strong> {incident.latitude && incident.longitude 
-                      ? `${incident.latitude}, ${incident.longitude}` 
+                    <strong>Location:</strong> {incident.latitude && incident.longitude
+                      ? `${incident.latitude}, ${incident.longitude}`
                       : 'Location not specified'}
                   </p>
                   <p><strong>Description:</strong> {incident.description || 'No description provided'}</p>
@@ -495,7 +499,7 @@ const Dashboard = () => {
                   <div className="mt-3 space-y-2">
                     <div>
                       <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
-                      <select 
+                      <select
                         value={incident.lifeCycleStatus}
                         onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
                         className={`border rounded px-3 py-1 text-sm ${
@@ -551,7 +555,7 @@ const Dashboard = () => {
           </div>
           </div>
         )
-        
+
         }
 
         {/* {activeTab === 'dispatch' && <DispatcherPage />} */}
@@ -580,13 +584,13 @@ const Dashboard = () => {
                         {new Date(user.createdAt).toLocaleDateString()}
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button 
+                        <button
                           onClick={() => approveUser(user.userId)}
                           className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
                         >
                           Approve
                         </button>
-                        <button 
+                        <button
                           onClick={() => rejectUser(user.userId)}
                           className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
                         >
@@ -665,7 +669,7 @@ const Dashboard = () => {
                       <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{admin.role}</td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                         {admin.email !== 'admin@emergency.gov' && admin.email !== userInfo?.sub && (
-                          <button 
+                          <button
                             onClick={() => removeAdmin(admin.userId)}
                             className="text-red-600 hover:text-red-900"
                           >
@@ -766,7 +770,7 @@ const Dashboard = () => {
                         <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{unit.status || 'Active'}</span>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button 
+                        <button
                           onClick={() => removeUnit(unit.id)}
                           className="text-red-600 hover:text-red-900"
                         >
@@ -790,8 +794,8 @@ const Dashboard = () => {
               Assign Vehicle to {selectedIncident.incidentType} Incident
             </h3>
             <p className="text-sm text-gray-600 mb-4">
-              Location: {selectedIncident.address?.latitude && selectedIncident.address?.longitude 
-                ? `${selectedIncident.address.latitude}, ${selectedIncident.address.longitude}` 
+              Location: {selectedIncident.address?.latitude && selectedIncident.address?.longitude
+                ? `${selectedIncident.address.latitude}, ${selectedIncident.address.longitude}`
                 : 'Location not specified'}
             </p>
             <div className="space-y-2 mb-4">
@@ -800,7 +804,7 @@ const Dashboard = () => {
                 // Filter vehicles by incident type
                 const incidentType = selectedIncident.incidentType?.toLowerCase();
                 let filteredVehicles = availableVehicles;
-                
+
                 if (incidentType?.includes('police')) {
                   filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'POLICE_CAR');
                 } else if (incidentType?.includes('fire')) {
@@ -808,7 +812,7 @@ const Dashboard = () => {
                 } else if (incidentType?.includes('medical') || incidentType?.includes('ambulance')) {
                   filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'AMBULANCE');
                 }
-                
+
                 return filteredVehicles.length === 0 ? (
                   <p className="text-gray-500">No suitable vehicles available for this incident type</p>
                 ) : (

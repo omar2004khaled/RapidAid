@@ -1,19 +1,31 @@
 package com.example.auth.controller.rest;
 
+import com.example.auth.dto.NotificationResponse;
 import com.example.auth.service.NotificationService;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/notification")
-@Tag(name = "Notifications", description = "Notification management endpoints (Future implementation)")
-@SecurityRequirement(name = "bearerAuth")
+@RequiredArgsConstructor
 public class NotificationController {
 
-    @Autowired
-    private NotificationService notificationService;
+    private final NotificationService notificationService;
 
+    @GetMapping("/all-unread")
+    public List<NotificationResponse> getAllUnreadNotifications() {
+        return notificationService.getUnreadNotifications();
+    }
+
+    @PutMapping("/mark-read")
+    public NotificationResponse markRead(@RequestParam Long id, @RequestParam String userEmail) {
+        return notificationService.markAsRead(id, userEmail);
+    }
+
+    @PutMapping("/mark-all-read")
+    public void markAllRead(@RequestParam String userEmail) {
+        notificationService.markAllAsRead(userEmail);
+    }
 }
