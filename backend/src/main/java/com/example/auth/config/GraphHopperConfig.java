@@ -11,7 +11,7 @@ import java.io.File;
 @Configuration
 public class GraphHopperConfig {
 
-    @Value("${graphhopper.osm.file:src/main/resources/egypt-251227.osm.pbf}")
+    @Value("${graphhopper.osm.file:src/main/resources/egypt-251228.osm.pbf}")
     private String osmFile;
 
     @Value("${graphhopper.graph.location:target/routing-graph-cache}")
