@@ -4,11 +4,17 @@ import { BrowserRouter } from 'react-router-dom'
 import "leaflet/dist/leaflet.css";
 import './index.css'
 import App from './App.jsx'
+import { ToastProvider } from './contexts/ToastContext'
+import { ConfirmProvider } from './contexts/ConfirmContext'
 
 createRoot(document.getElementById('root')).render(
   <StrictMode>
     <BrowserRouter>
-      <App />
+      <ToastProvider>
+        <ConfirmProvider>
+          <App />
+        </ConfirmProvider>
+      </ToastProvider>
     </BrowserRouter>
   </StrictMode>,
 )

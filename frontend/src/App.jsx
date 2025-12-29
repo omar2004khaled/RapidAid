@@ -10,6 +10,7 @@ import Dashboard from "./Components/Dashboard";
 import CompleteProfile from "./Components/CompleteProfile";
 import DispatcherPage from './pages/DispatcherPage';
 import ReporterPage from './pages/ReporterPage';
+import AnalyticsPage from './pages/AnalyticsPage';
 import DebugPage from './pages/DebugPage';
 import ProtectedRoute from "./Components/ProtectedRoute";
 import AuthRoute from "./Components/AuthRoute";
@@ -44,6 +45,14 @@ function App() {
         element={
           <ProtectedRoute>
             <Dashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/analytics"
+        element={
+          <ProtectedRoute>
+            <AnalyticsPage />
           </ProtectedRoute>
         }
       />
