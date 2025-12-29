@@ -11,8 +11,8 @@ import java.util.HashSet;
 import java.util.Set;
 
 
-@Table(name = "Assignment")
 @Entity
+@Table(name = "Assignment")
 @AllArgsConstructor
 @NoArgsConstructor
 @Getter

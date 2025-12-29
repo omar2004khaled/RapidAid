@@ -10,6 +10,7 @@ import Dashboard from "./Components/Dashboard";
 import CompleteProfile from "./Components/CompleteProfile";
 import DispatcherPage from './pages/DispatcherPage';
 import ReporterPage from './pages/ReporterPage';
+import DebugPage from './pages/DebugPage';
 import ProtectedRoute from "./Components/ProtectedRoute";
 import AuthRoute from "./Components/AuthRoute";
 
@@ -55,6 +56,7 @@ function App() {
         }
       />
       <Route path='/report' element={<ReporterPage />} />
+      <Route path='/debug' element={<DebugPage />} />
       <Route
         path="/"
         element={

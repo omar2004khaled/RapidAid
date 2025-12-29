@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { MapContainer, TileLayer, Marker, Popup, Polyline } from "react-leaflet";
 import L from "leaflet";
 import incidentAPI from '../services/incidentAPI';
+import vehicleAPI from '../services/vehicleAPI';
 import "leaflet/dist/leaflet.css";
 
 /** Helper: build a Leaflet divIcon from SVG */
@@ -268,109 +269,182 @@ const VEHICLES = [
 
 export default function MapPage() {
   const [incidents, setIncidents] = useState([]);
+  const [vehicles, setVehicles] = useState([]);
+  const [vehicleLocations, setVehicleLocations] = useState({});
+  const [vehicleRoutes, setVehicleRoutes] = useState({});
 
+  // Fetch incidents and vehicles
   useEffect(() => {
     let mounted = true;
-    incidentAPI.getAllIncidents()
-      .then(data => {
-        const list = data?.content || data || [];
-        // Normalize and validate incidents: accept nested address coords, normalize type, and build stable unique IDs
-      const seenIds = new Set();
-      const transformed = list.reduce((acc, inc, idx) => {
-        // Support multiple coordinate shapes: top-level or nested in address/location
-        const rawLat = inc.latitude ?? inc.lat ?? inc.address?.latitude ?? inc.location?.latitude;
-        const rawLng = inc.longitude ?? inc.lon ?? inc.lng ?? inc.address?.longitude ?? inc.location?.longitude;
-
-        // Skip incidents without valid numeric coordinates
-        if (!isFinite(rawLat) || !isFinite(rawLng)) {
-          console.warn('[MapPage] skipping incident with missing/invalid coords:', inc);
-          return acc;
+    
+    const fetchData = async () => {
+      try {
+        // Fetch incidents
+        const incidentData = await incidentAPI.getAllIncidents();
+        const incidentList = incidentData?.content || incidentData || [];
+        
+        // Fetch vehicles
+        const vehicleData = await vehicleAPI.getVehiclesByStatus('AVAILABLE');
+        const onRouteVehicles = await vehicleAPI.getVehiclesByStatus('ON_ROUTE').catch(() => []);
+        const allVehicles = [...vehicleData, ...onRouteVehicles];
+        
+        if (mounted) {
+          processIncidents(incidentList, setIncidents);
+          setVehicles(allVehicles);
         }
-
-        // Build a stable id, falling back to other fields or the index
-        const rawId = inc.id ?? inc.incidentId ?? inc.incidentId ?? inc.uuid ?? idx;
-        let id = `inc-${rawId}`;
-        // Ensure uniqueness (append suffix if necessary)
-        if (seenIds.has(id)) {
-          let suffix = 1;
-          while (seenIds.has(`${id}-${suffix}`)) suffix += 1;
-          id = `${id}-${suffix}`;
+      } catch (err) {
+        console.error('[MapPage] error loading data', err);
+      }
+    };
+    
+    fetchData();
+    
+    // Fetch vehicle locations from Redis every 5 seconds
+    const locationInterval = setInterval(async () => {
+      try {
+        const response = await fetch('http://localhost:8080/test/vehicle-location/redis/all');
+        if (response.ok) {
+          const locations = await response.json();
+          if (mounted) {
+            setVehicleLocations(locations);
+            
+            // Fetch route points for vehicles that have routes
+            const routePromises = [];
+            Object.keys(locations).forEach(key => {
+              if (key.startsWith('vehicle:route:')) {
+                const vehicleId = key.replace('vehicle:route:', '');
+                routePromises.push(
+                  fetch(`http://localhost:8080/test/vehicle-location/route/${vehicleId}`)
+                    .then(res => res.json())
+                    .then(data => ({ vehicleId, data }))
+                    .catch(() => ({ vehicleId, data: { hasRoute: false } }))
+                );
+              }
+            });
+            
+            if (routePromises.length > 0) {
+              Promise.all(routePromises).then(results => {
+                const routes = {};
+                results.forEach(({ vehicleId, data }) => {
+                  routes[vehicleId] = data;
+                });
+                setVehicleRoutes(routes);
+              });
+            }
+          }
         }
-        seenIds.add(id);
+      } catch (err) {
+        console.error('[MapPage] error fetching vehicle locations', err);
+      }
+    }, 5000);
 
-        // Map incident types to our icon types
-        const typeRaw = (inc.incidentType || '').toString().toLowerCase();
-        let mappedType = 'unknown';
-        if (typeRaw.includes('police')) mappedType = 'police';
-        else if (typeRaw.includes('fire')) mappedType = 'fire';
-        else if (typeRaw.includes('medical') || typeRaw.includes('ambulance') || typeRaw.includes('med')) mappedType = 'ambulance';
-        else if (typeRaw) mappedType = typeRaw;
-
-        // Build a friendly title if none provided
-        const title = inc.description || inc.title || (inc.address ? `${mappedType.toUpperCase()} @ ${inc.address.street || inc.address.city || 'Unknown location'}` : `Incident ${rawId}`) || 'Untitled Incident';
-
-        acc.push({
-          id,
-          type: mappedType,
-          title,
-          position: [Number(rawLat), Number(rawLng)],
-          vehicleId: inc.assignedVehicleId ? `veh-${inc.assignedVehicleId}` : null,
-          raw: inc, // keep original for debugging if needed
-        });
-
-        return acc;
-      }, []);
-
-      if (mounted) setIncidents(transformed);
-      })
-      .catch(err => console.error('[MapPage] error loading incidents', err));
-
-    return () => { mounted = false; };
+    return () => { 
+      mounted = false;
+      clearInterval(locationInterval);
+    };
   }, []);
 
-  const center = [33.5779, -101.8552];
-  const vehiclesById = new Map(VEHICLES.map((v) => [v.id, v]));
+  // Cairo, Egypt coordinates
+  const center = [30.0444, 31.2357];
+  
+  // Process incidents helper function
+  const processIncidents = (list, setIncidents) => {
+    const seenIds = new Set();
+    const transformed = list.reduce((acc, inc, idx) => {
+      const rawLat = inc.latitude ?? inc.lat ?? inc.address?.latitude ?? inc.location?.latitude;
+      const rawLng = inc.longitude ?? inc.lon ?? inc.lng ?? inc.address?.longitude ?? inc.location?.longitude;
+
+      if (!isFinite(rawLat) || !isFinite(rawLng)) {
+        console.warn('[MapPage] skipping incident with missing/invalid coords:', inc);
+        return acc;
+      }
+
+      const rawId = inc.id ?? inc.incidentId ?? inc.uuid ?? idx;
+      let id = `inc-${rawId}`;
+      if (seenIds.has(id)) {
+        let suffix = 1;
+        while (seenIds.has(`${id}-${suffix}`)) suffix += 1;
+        id = `${id}-${suffix}`;
+      }
+      seenIds.add(id);
+
+      const typeRaw = (inc.incidentType || '').toString().toLowerCase();
+      let mappedType = 'ambulance';
+      if (typeRaw.includes('police')) mappedType = 'police';
+      else if (typeRaw.includes('fire')) mappedType = 'fire';
+      else if (typeRaw.includes('medical') || typeRaw.includes('ambulance')) mappedType = 'ambulance';
+
+      const title = inc.description || inc.title || `${mappedType.toUpperCase()} Incident ${rawId}` || 'Untitled Incident';
+
+      acc.push({
+        id,
+        type: mappedType,
+        title,
+        position: [Number(rawLat), Number(rawLng)],
+        status: inc.lifeCycleStatus || 'REPORTED',
+        raw: inc,
+      });
+
+      return acc;
+    }, []);
+
+    setIncidents(transformed);
+  };
 
   return (
     <div style={{ height: "70vh", width: "100%", borderRadius: 16, overflow: "hidden" }}>
-      <MapContainer center={center} zoom={14} style={{ height: "100%", width: "100%" }}>
+      <MapContainer center={center} zoom={12} style={{ height: "100%", width: "100%" }}>
         <TileLayer
           attribution='&copy; OpenStreetMap contributors'
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        {incidents.map((inc) => {
-          const veh = vehiclesById.get(inc.vehicleId);
+        {/* Render Incidents */}
+        {incidents.map((inc) => (
+          <Marker key={inc.id} position={inc.position} icon={getIncidentIcon(inc.type)}>
+            <Popup>
+              <b>{inc.title}</b>
+              <div>Type: {inc.type}</div>
+              <div>Status: {inc.status}</div>
+            </Popup>
+          </Marker>
+        ))}
 
+        {/* Render Vehicles */}
+        {vehicles.map((vehicle) => {
+          const locationKey = `vehicle:location:${vehicle.vehicleId}`;
+          const location = vehicleLocations[locationKey];
+          
+          if (!location?.latitude || !location?.longitude) {
+            return null;
+          }
+          
+          const position = [parseFloat(parseFloat(location.latitude).toFixed(8)), parseFloat(parseFloat(location.longitude).toFixed(8))];
+          const vehicleType = (vehicle.vehicleType || '').toLowerCase();
+          let iconType = 'ambulance';
+          if (vehicleType.includes('police')) iconType = 'police';
+          else if (vehicleType.includes('fire')) iconType = 'fire';
+          
           return (
-            <React.Fragment key={inc.id}>
-              <Marker position={inc.position} icon={getIncidentIcon(inc.type)}>
+            <React.Fragment key={vehicle.vehicleId}>
+              <Marker position={position} icon={getVehicleIcon(iconType)}>
                 <Popup>
-                  <b>{inc.title}</b>
-                  <div>Type: {inc.type}</div>
-                  {veh ? <div>Assigned: {veh.label}</div> : <div>No vehicle assigned</div>}
+                  <b>{vehicle.registrationNumber || `Vehicle ${vehicle.vehicleId}`}</b>
+                  <div>Type: {vehicle.vehicleType}</div>
+                  <div>Status: {vehicle.status}</div>
                 </Popup>
               </Marker>
-
-              {veh && (
+              
+              {/* Show route line if vehicle is en route */}
+              {vehicleRoutes[vehicle.vehicleId]?.hasRoute && (
                 <Polyline
-                  positions={[veh.position, inc.position]}
-                  pathOptions={{ color: lineColor(inc.type), weight: 4, opacity: 0.8 }}
+                  positions={vehicleRoutes[vehicle.vehicleId].points.map(p => [p.lat, p.lng])}
+                  pathOptions={{ color: lineColor(iconType), weight: 4, opacity: 0.8 }}
                 />
               )}
             </React.Fragment>
           );
         })}
-
-        {VEHICLES.map((veh) => (
-          <Marker key={veh.id} position={veh.position} icon={getVehicleIcon(veh.type)}>
-            <Popup>
-              <b>{veh.label}</b>
-              <div>Type: {veh.type}</div>
-              <div>Status: {veh.status}</div>
-            </Popup>
-          </Marker>
-        ))}
       </MapContainer>
     </div>
   );

@@ -4,9 +4,11 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import adminAPI from '../services/adminAPI';
 import incidentAPI from '../services/incidentAPI';
 import vehicleAPI from '../services/vehicleAPI';
+import assignmentAPI from '../services/assignmentAPI';
 import websocketService from '../services/websocketService';
 import '../css/DispatcherCss.css';
 import MapPage from "../pages/MapPage";
+import LocationPickerMap from './LocationPickerMap';
 
 
 const Dashboard = () => {
@@ -20,8 +22,12 @@ const Dashboard = () => {
   const [emergencyUnits, setEmergencyUnits] = useState([]);
   const [incidents, setIncidents] = useState([]);
   const [pendingUsers, setPendingUsers] = useState([]);
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
+  const [selectedIncident, setSelectedIncident] = useState(null);
 
-  const [newUnit, setNewUnit] = useState({ type: '', count: 0, lattiude: 13, longitude: 13 });
+  const [newUnit, setNewUnit] = useState({ type: 'AMBULANCE', count: 0, latitude: 30.0444, longitude: 31.2357 });
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
   const [showProfileDropdown, setShowProfileDropdown] = useState(false);
   const [userInfo, setUserInfo] = useState(null);
   
@@ -160,9 +166,11 @@ const Dashboard = () => {
     try {
       const availableVehicles = await vehicleAPI.getVehiclesByStatus('AVAILABLE');
       processUnits(availableVehicles);
+      setAvailableVehicles(availableVehicles);
     } catch (error) {
       console.error('Error fetching units:', error);
       setEmergencyUnits([]);
+      setAvailableVehicles([]);
     }
   };
 
@@ -246,35 +254,54 @@ const Dashboard = () => {
       alert('Please fill in all fields with valid values');
       return;
     }
-
-    const normalizeType = (type) => {
-        const t = type.toLowerCase();
-        if (t.includes('ambulance')) return 'AMBULANCE';
-        if (t.includes('fire')) return 'FIRE_TRUCK';
-        if (t.includes('police')) return 'POLICE_CAR';
-        return null;
-    };
-
-    const normalizedType = normalizeType(newUnit.type);
-    if (!normalizedType) {
-        alert('Invalid vehicle type. Please use Ambulance, Fire Truck, or Police Car.');
-        return;
-    }
     
     try {
       for (let i = 0; i < newUnit.count; i++) {
-        await vehicleAPI.createVehicle({
-            vehicleType: normalizedType,
+        const vehicleData = {
+            vehicleType: newUnit.type,
             registrationNumber: `UNIT-${Math.floor(Math.random() * 100000)}`,
             status: 'AVAILABLE',
             capacity: 4,
-            lastLatitude: 30.0444,
-            lastLongitude: 31.2357
-        });
+            lastLatitude: parseFloat(newUnit.latitude.toFixed(6)),
+            lastLongitude: parseFloat(newUnit.longitude.toFixed(6))
+        };
+        
+        const createdVehicle = await vehicleAPI.createVehicle(vehicleData);
+        
+        // Initialize vehicle location in Redis
+        if (createdVehicle.vehicleId) {
+          try {
+            const redisResponse = await fetch(`http://localhost:8080/test/vehicle-location/update/${createdVehicle.vehicleId}`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+              body: `latitude=${vehicleData.lastLatitude}&longitude=${vehicleData.lastLongitude}`
+            });
+            
+            if (redisResponse.ok) {
+              console.log(`Vehicle ${createdVehicle.vehicleId} added to Redis successfully`);
+            } else {
+              console.error(`Failed to add vehicle ${createdVehicle.vehicleId} to Redis:`, await redisResponse.text());
+            }
+          } catch (redisError) {
+            console.error(`Redis error for vehicle ${createdVehicle.vehicleId}:`, redisError);
+          }
+        }
       }
       
       alert('Units created successfully!');
-      setNewUnit({ type: '', count: 0, location: '' });
+      
+      // Force initialize all vehicles in Redis after creation
+      try {
+        const response = await fetch('http://localhost:8080/test/vehicle-location/init-all-vehicles', {
+          method: 'POST'
+        });
+        const result = await response.json();
+        console.log('Redis initialization result:', result.message);
+      } catch (error) {
+        console.error('Failed to initialize vehicles in Redis:', error);
+      }
+      
+      setNewUnit({ type: 'AMBULANCE', count: 0, latitude: 30.0444, longitude: 31.2357 });
       fetchUnits();
     } catch (error) {
       console.error('Error adding unit:', error);
@@ -284,12 +311,20 @@ const Dashboard = () => {
 
   const removeUnit = async (id) => {
     try {
-      // TODO: Backend endpoint for deleting vehicles doesn't exist yet
-      alert('Unit removal feature is not yet implemented in the backend');
-      // await vehicleAPI.deleteVehicle(id);
-      // fetchUnits();
+      const response = await fetch(`http://localhost:8080/test/vehicle-location/delete/${id}`, {
+        method: 'DELETE'
+      });
+      const result = await response.json();
+      
+      if (response.ok) {
+        alert('Unit removed successfully!');
+        fetchUnits();
+      } else {
+        alert('Failed to remove unit: ' + result.error);
+      }
     } catch (error) {
       console.error('Error removing unit:', error);
+      alert('Failed to remove unit');
     }
   };
 
@@ -341,6 +376,29 @@ const Dashboard = () => {
     if (level >= 3) return 'High';
     if (level >= 2) return 'Medium';
     return 'Low';
+  };
+
+  const handleAssignVehicle = (incident) => {
+    setSelectedIncident(incident);
+    setShowAssignModal(true);
+  };
+
+  const assignVehicleToIncident = async (vehicleId) => {
+    try {
+      await assignmentAPI.createAssignment({
+        incidentId: selectedIncident.incidentId,
+        vehicleId: vehicleId,
+        assignedByUserId: userInfo?.userId || 1
+      });
+      alert('Vehicle assigned successfully!');
+      setShowAssignModal(false);
+      setSelectedIncident(null);
+      fetchIncidents();
+      fetchUnits();
+    } catch (error) {
+      console.error('Error assigning vehicle:', error);
+      alert('Failed to assign vehicle: ' + error.message);
+    }
   };
 
   return (
@@ -433,23 +491,51 @@ const Dashboard = () => {
                   </p>
                   <p><strong>Description:</strong> {incident.description || 'No description provided'}</p>
                   <p><strong>Reported:</strong> {new Date(incident.timeReported).toLocaleString()}</p>
-                  <div className="mt-3">
-                    <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
-                    <select 
-                      value={incident.lifeCycleStatus}
-                      onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
-                      className={`border rounded px-3 py-1 text-sm ${
-                        incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-50 border-green-300' :
-                        incident.lifeCycleStatus === 'ASSIGNED' ? 'bg-blue-50 border-blue-300' :
-                        incident.lifeCycleStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
-                        'bg-gray-50 border-gray-300'
-                      }`}
+                  <div className="mt-3 space-y-2">
+                    <div>
+                      <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
+                      <select 
+                        value={incident.lifeCycleStatus}
+                        onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
+                        className={`border rounded px-3 py-1 text-sm ${
+                          incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-50 border-green-300' :
+                          incident.lifeCycleStatus === 'ASSIGNED' ? 'bg-blue-50 border-blue-300' :
+                          incident.lifeCycleStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
+                          'bg-gray-50 border-gray-300'
+                        }`}
+                      >
+                        <option value="REPORTED">Reported</option>
+                        <option value="ASSIGNED">Assigned</option>
+                        <option value="RESOLVED">Resolved</option>
+                        <option value="CANCELLED">Cancelled</option>
+                      </select>
+                    </div>
+                    {incident.lifeCycleStatus === 'REPORTED' && (
+                      <button
+                        onClick={() => handleAssignVehicle(incident)}
+                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 mr-2"
+                      >
+                        Assign Vehicle
+                      </button>
+                    )}
+                    <button
+                      onClick={async () => {
+                        if (confirm('Are you sure you want to delete this incident?')) {
+                          try {
+                            await fetch(`http://localhost:8080/api/incident/delete/${incident.incidentId}`, {
+                              method: 'DELETE',
+                              headers: { 'Authorization': `Bearer ${localStorage.getItem('authToken')}` }
+                            });
+                            fetchIncidents();
+                          } catch (error) {
+                            alert('Failed to delete incident');
+                          }
+                        }
+                      }}
+                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
                     >
-                      <option value="REPORTED">Reported</option>
-                      <option value="ASSIGNED">Assigned</option>
-                      <option value="RESOLVED">Resolved</option>
-                      <option value="CANCELLED">Cancelled</option>
-                    </select>
+                      Delete
+                    </button>
                   </div>
                 </div>
               ))}
@@ -605,15 +691,17 @@ const Dashboard = () => {
             <h2 className="text-xl font-semibold mb-4">Emergency Units Management</h2>
             <div className="mb-6 p-4 bg-gray-50 rounded">
               <h3 className="font-medium mb-3">Add New Unit</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <input
-                  type="text"
-                  placeholder="Unit Type (Ambulance, Fire Truck, etc.)"
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
+                <select
                   value={newUnit.type}
                   onChange={(e) => setNewUnit({...newUnit, type: e.target.value})}
                   className="border rounded px-3 py-2"
                   required
-                />
+                >
+                  <option value="AMBULANCE">Ambulance</option>
+                  <option value="FIRE_TRUCK">Fire Truck</option>
+                  <option value="POLICE_CAR">Police Car</option>
+                </select>
                 <input
                   type="number"
                   placeholder="Count"
@@ -623,8 +711,36 @@ const Dashboard = () => {
                   min="1"
                   required
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowLocationPicker(true)}
+                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
+                >
+                  Pick Location
+                </button>
+                <div className="text-sm text-gray-600">
+                  Selected: Lat: {newUnit.latitude.toFixed(6)}, Lng: {newUnit.longitude.toFixed(6)}
+                </div>
                 <button onClick={addUnit} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
                   Add Unit
+                </button>
+              </div>
+              <div className="mt-2">
+                <button
+                  onClick={async () => {
+                    try {
+                      const response = await fetch('http://localhost:8080/test/vehicle-location/init-all-vehicles', {
+                        method: 'POST'
+                      });
+                      const result = await response.json();
+                      alert(result.message);
+                    } catch (error) {
+                      alert('Failed to initialize vehicles in Redis');
+                    }
+                  }}
+                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                >
+                  Load All Vehicles to Map
                 </button>
               </div>
             </div>
@@ -664,6 +780,88 @@ const Dashboard = () => {
           </div>
         )}
       </div>
+
+      {/* Assignment Modal */}
+      {showAssignModal && selectedIncident && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
+            <h3 className="text-lg font-semibold mb-4">
+              Assign Vehicle to {selectedIncident.incidentType} Incident
+            </h3>
+            <p className="text-sm text-gray-600 mb-4">
+              Location: {selectedIncident.address?.latitude && selectedIncident.address?.longitude 
+                ? `${selectedIncident.address.latitude}, ${selectedIncident.address.longitude}` 
+                : 'Location not specified'}
+            </p>
+            <div className="space-y-2 mb-4">
+              <h4 className="font-medium">Available Vehicles:</h4>
+              {availableVehicles.length === 0 ? (
+                <p className="text-gray-500">No vehicles available</p>
+              ) : (
+                availableVehicles.map(vehicle => (
+                  <div key={vehicle.vehicleId} className="flex justify-between items-center p-2 border rounded">
+                    <div>
+                      <span className="font-medium">{vehicle.registrationNumber}</span>
+                      <span className="text-sm text-gray-500 ml-2">({vehicle.vehicleType})</span>
+                    </div>
+                    <button
+                      onClick={() => assignVehicleToIncident(vehicle.vehicleId)}
+                      className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                    >
+                      Assign
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => {
+                  setShowAssignModal(false);
+                  setSelectedIncident(null);
+                }}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Location Picker Modal */}
+      {showLocationPicker && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg p-6 w-4/5 h-4/5 max-w-4xl">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="text-lg font-semibold">Pick Vehicle Location</h3>
+              <button
+                onClick={() => setShowLocationPicker(false)}
+                className="text-gray-500 hover:text-gray-700"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="h-96 mb-4">
+              <LocationPickerMap
+                initialPosition={[newUnit.latitude, newUnit.longitude]}
+                onLocationSelect={(lat, lng) => {
+                  setNewUnit({...newUnit, latitude: lat, longitude: lng});
+                  setShowLocationPicker(false);
+                }}
+              />
+            </div>
+            <div className="flex justify-end space-x-2">
+              <button
+                onClick={() => setShowLocationPicker(false)}
+                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

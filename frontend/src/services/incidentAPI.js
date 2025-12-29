@@ -148,6 +148,23 @@ const incidentAPI = {
   },
 
   /**
+   * Update incident status
+   * PUT /api/incident/update-status/{id}
+   * @param {number} id - Incident ID
+   * @param {string} status - New status
+   * @returns {Promise<Object>} Updated incident
+   */
+  updateStatus: async (id, status) => {
+    const queryString = buildQueryString({ status });
+    const response = await fetch(`${API_BASE_URL}/api/incident/update-status/${id}${queryString}`, {
+      method: 'PUT',
+      headers: getAuthHeaders(),
+      mode: 'cors'
+    });
+    return handleResponse(response);
+  },
+
+  /**
    * Cancel incident
    * PUT /api/incident/cancel/{id}
    * @param {number} id - Incident ID to cancel

@@ -264,4 +264,55 @@ public class IncidentController {
         return ResponseEntity.ok(cancelStatus);
     }
 
+    @Operation(
+            summary = "Update incident status",
+            description = "Updates the lifecycle status of an incident."
+    )
+    @PutMapping("/update-status/{id}")
+    public ResponseEntity<IncidentResponse> updateIncidentStatus(
+            @PathVariable Integer id,
+            @RequestParam String status) {
+        try {
+            IncidentResponse updatedIncident;
+            switch (status.toUpperCase()) {
+                case "ACCEPTED":
+                    updatedIncident = incidentService.updateToAccepted(id);
+                    break;
+                case "RESOLVED":
+                    updatedIncident = incidentService.updateToResolved(id);
+                    break;
+                case "CANCELLED":
+                    incidentService.cancelIncident(id);
+                    return ResponseEntity.ok().build();
+                default:
+                    return ResponseEntity.badRequest().build();
+            }
+            return ResponseEntity.ok(updatedIncident);
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+    @Operation(
+            summary = "Delete incident",
+            description = "Permanently deletes an incident from the system."
+    )
+    @ApiResponses(value = {
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Incident deleted successfully"
+            ),
+            @ApiResponse(responseCode = "404", description = "Incident not found")
+    })
+    @DeleteMapping("/delete/{id}")
+    public ResponseEntity<?> deleteIncident(
+            @Parameter(description = "Incident ID", required = true, example = "1")
+            @PathVariable Integer id) {
+        try {
+            incidentService.deleteIncident(id);
+            return ResponseEntity.ok().build();
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().build();
+        }
+    }
+
 }

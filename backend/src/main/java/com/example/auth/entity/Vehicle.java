@@ -37,10 +37,10 @@ public class Vehicle {
     @Column(name = "status")
     private VehicleStatus status = VehicleStatus.AVAILABLE;
 
-    @Column(name = "last_latitude")
+    @Column(name = "last_latitude", precision = 10, scale = 8)
     private BigDecimal lastLatitude;
 
-    @Column(name = "last_longitude")
+    @Column(name = "last_longitude", precision = 11, scale = 8)
     private BigDecimal lastLongitude;
 
     @UpdateTimestamp
