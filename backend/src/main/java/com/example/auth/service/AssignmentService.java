@@ -13,7 +13,7 @@ import com.example.auth.repository.AssignmentRepository;
 import com.example.auth.repository.IncidentRepository;
 import com.example.auth.repository.UserRepository;
 import com.example.auth.repository.VehicleRepository;
-import org.springframework.beans.factory.annotation.Autowired;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +21,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
+@RequiredArgsConstructor
 public class AssignmentService {
 
     private final AssignmentMapper assignmentMapper;
@@ -30,19 +31,6 @@ public class AssignmentService {
     private final UserRepository userRepository;
     private final VehicleRepository vehicleRepository;
 
-    public AssignmentService(AssignmentRepository assignmentRepository, 
-                           UserRepository userRepository,
-                           VehicleRepository vehicleRepository,
-                           AssignmentMapper assignmentMapper,
-                           IncidentRepository incidentRepository,
-                           WebSocketNotificationService webSocketNotificationService) {
-        this.assignmentRepository = assignmentRepository;
-        this.userRepository = userRepository;
-        this.vehicleRepository = vehicleRepository;
-        this.assignmentMapper = assignmentMapper;
-        this.incidentRepository = incidentRepository;
-        this.webSocketNotificationService = webSocketNotificationService;
-    }
 
     @Transactional
     public void acceptAssignment(Integer assignmentId, Long responderId) {

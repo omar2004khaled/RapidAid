@@ -1,6 +1,7 @@
 package com.example.auth.service;
 
 import com.example.auth.dto.IncidentResponse;
+import com.example.auth.dto.NotificationResponse;
 import com.example.auth.dto.VehicleResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +42,12 @@ public class WebSocketNotificationService {
         logger.info("Processing available vehicle update notification.....");
         messagingTemplate.convertAndSend("/topic/vehicle/available", availableVehicles);
         logger.info("Sending available vehicle update notification via WebSocket.");
+    }
+
+    public void notifyUnreadNotificationsUpdate(List<NotificationResponse> unreadNotifications) {
+        logger.info("Processing unread notifications update.....");
+        messagingTemplate.convertAndSend("/topic/notification/unread", unreadNotifications);
+        logger.info("Sending unread notifications update via WebSocket.");
     }
 
 }

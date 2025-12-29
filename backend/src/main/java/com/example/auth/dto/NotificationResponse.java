@@ -1,25 +1,21 @@
 package com.example.auth.dto;
 
-import java.time.LocalDateTime;
-
 import com.example.auth.enums.NotificationStatus;
-import com.example.auth.enums.UserRole;
-
+import com.example.auth.enums.NotificationType;
+import com.example.auth.enums.ServiceType;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationResponse {
+    private NotificationType type;
     private Long notificationId;
-    private UserRole type;
-    private String message;
-    private LocalDateTime timestamp;
+    private ServiceType serviceType;
     private NotificationStatus status;
-    private Integer receiverUserId;
-    private String receiverUserName;
-    private Integer relatedIncidentId;
-    private String relatedIncidentType;
+    private LocalDateTime timestamp;
 }
