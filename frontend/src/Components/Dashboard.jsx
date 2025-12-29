@@ -472,6 +472,7 @@ const Dashboard = () => {
                 )}
             </div>
           </div>
+        </div>
           <nav className="flex space-x-8">
             {['incidents', 'admins', 'pending', 'units', 'analytics'].map(tab => (
               <button
@@ -486,7 +487,6 @@ const Dashboard = () => {
               </button>
             ))}
           </nav>
-        </div>
       </div>
 
       <div className="max-w-7xl mx-auto px-4 py-6">
