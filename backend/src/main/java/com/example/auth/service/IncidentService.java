@@ -132,7 +132,7 @@ public class IncidentService {
         Incident updatedIncident = incidentRepository.save(incident);
 
         // Update notifications
-        if (previousStatus != IncidentStatus.REPORTED)
+        if (previousStatus == IncidentStatus.REPORTED)
             webSocketNotificationService.notifyReportedIncidentUpdate();
         webSocketNotificationService.notifyAcceptedIncidentUpdate();
 

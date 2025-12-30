@@ -1,7 +1,9 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import analyticsAPI from '../services/analyticsAPI';
 import ResponseTimeChart from '../Components/Analytics/ResponseTimeChart';
 import TopUnitsTable from '../Components/Analytics/TopUnitsTable';
+
+import websocketService from '../services/websocketService';
 
 const AnalyticsPage = () => {
     const [metrics, setMetrics] = useState(null);
@@ -10,27 +12,59 @@ const AnalyticsPage = () => {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
 
+    // Refs for subscriptions to avoid duplicates
+    const incidentAcceptedSubscriptionRef = useRef(null);
+    const incidentReportedSubscriptionRef = useRef(null);
+    const vehicleSubscriptionRef = useRef(null);
+
+    const fetchData = async () => {
+        try {
+            const [metricsRes, trendRes, unitsRes] = await Promise.all([
+                analyticsAPI.getPerformanceMetrics(),
+                analyticsAPI.getResponseTimeTrend(30),
+                analyticsAPI.getTopPerformingUnits(5)
+            ]);
+
+            setMetrics(metricsRes);
+            setTrendData(metricsRes ? trendRes : []);
+            setTopUnits(unitsRes);
+            setLoading(false);
+        } catch (err) {
+            console.error("Failed to load analytics data", err);
+            setError("Failed to load analytics data.");
+            setLoading(false);
+        }
+    };
+
     useEffect(() => {
-        const fetchData = async () => {
-            try {
-                const [metricsRes, trendRes, unitsRes] = await Promise.all([
-                    analyticsAPI.getPerformanceMetrics(),
-                    analyticsAPI.getResponseTimeTrend(30),
-                    analyticsAPI.getTopPerformingUnits(5)
-                ]);
-
-                setMetrics(metricsRes);
-                setTrendData(metricsRes ? trendRes : []);
-                setTopUnits(unitsRes);
-                setLoading(false);
-            } catch (err) {
-                console.error("Failed to load analytics data", err);
-                setError("Failed to load analytics data.");
-                setLoading(false);
-            }
-        };
-
         fetchData();
+
+        // Connect to WebSocket
+        websocketService.connect(
+            'http://localhost:8080/ws',
+            () => {
+                // Subscribe to updates that affect analytics
+                incidentAcceptedSubscriptionRef.current = websocketService.subscribe('/topic/incident/accepted', () => {
+                    fetchData();
+                });
+
+                incidentReportedSubscriptionRef.current = websocketService.subscribe('/topic/incident/reported', () => {
+                    fetchData();
+                });
+
+                // Vehicle availability changes might imply mission completion -> metric update
+                vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicle/available', () => {
+                    fetchData();
+                });
+            },
+            (err) => console.error('[Analytics] WS Error:', err)
+        );
+
+        return () => {
+            if (incidentAcceptedSubscriptionRef.current) websocketService.unsubscribe(incidentAcceptedSubscriptionRef.current);
+            if (incidentReportedSubscriptionRef.current) websocketService.unsubscribe(incidentReportedSubscriptionRef.current);
+            if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
+        };
     }, []);
 
     if (loading) return <div className="p-8 text-center">Loading analytics...</div>;
