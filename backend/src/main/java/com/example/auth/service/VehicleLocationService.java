@@ -63,6 +63,9 @@ public class VehicleLocationService {
         }
     }
 
+    @org.springframework.beans.factory.annotation.Value("${vehicle.simulation.speed-factor:1.0}")
+    private double simulationSpeedFactor;
+
     public void calculateAndStoreRoute(Integer vehicleId, BigDecimal targetLat, BigDecimal targetLng) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId).orElse(null);
         if (vehicle == null) {
@@ -82,8 +85,11 @@ public class VehicleLocationService {
             RoutingService.RouteResult route = routingService.findRouteForVehicle(vehicle, targetLat, targetLng);
             String routeKey = ROUTE_KEY_PREFIX + vehicleId;
             
+            // Apply Speed Factor: Divide real time by factor (e.g., 100s / 10 = 10s simulation time)
+            double adjustedTime = route.getTimeSeconds() / simulationSpeedFactor;
+
             // Store route points and metadata
-            redisTemplate.opsForHash().put(routeKey, "totalTime", String.valueOf(route.getTimeSeconds()));
+            redisTemplate.opsForHash().put(routeKey, "totalTime", String.valueOf(adjustedTime));
             redisTemplate.opsForHash().put(routeKey, "startTime", LocalDateTime.now().toString());
             
             // Store route points as JSON-like string
@@ -95,7 +101,7 @@ public class VehicleLocationService {
             }
             redisTemplate.opsForHash().put(routeKey, "routePoints", pointsStr.toString());
             
-            System.out.println("Route stored for vehicle " + vehicleId + ", points: " + route.getPoints().size() + ", time: " + route.getTimeSeconds() + "s");
+            System.out.println("Route stored for vehicle " + vehicleId + ", points: " + route.getPoints().size() + ", time: " + adjustedTime + "s (Speed Factor: " + simulationSpeedFactor + "x)");
         } catch (Exception e) {
             System.out.println("Route calculation failed: " + e.getMessage());
         }
