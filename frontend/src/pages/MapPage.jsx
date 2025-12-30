@@ -267,27 +267,35 @@ const VEHICLES = [
   { id: "veh-ambulance", type: "ambulance", label: "Ambulance M3", position: [33.5389, -101.8371], status: "En route" },
 ];
 
+import websocketService from '../services/websocketService';
+
 export default function MapPage() {
   const [incidents, setIncidents] = useState([]);
   const [vehicles, setVehicles] = useState([]);
   const [vehicleLocations, setVehicleLocations] = useState({});
   const [vehicleRoutes, setVehicleRoutes] = useState({});
 
+  // Refs for subscriptions
+  const incidentReportedSubRef = React.useRef(null);
+  const incidentAcceptedSubRef = React.useRef(null);
+  const vehicleSubRef = React.useRef(null);
+
   // Fetch incidents and vehicles
   useEffect(() => {
     let mounted = true;
-    
+
     const fetchData = async () => {
       try {
+        console.log('[MapPage] Fetching fresh data...');
         // Fetch incidents
         const incidentData = await incidentAPI.getAllIncidents();
         const incidentList = incidentData?.content || incidentData || [];
-        
+
         // Fetch vehicles
         const vehicleData = await vehicleAPI.getVehiclesByStatus('AVAILABLE');
         const onRouteVehicles = await vehicleAPI.getVehiclesByStatus('ON_ROUTE').catch(() => []);
         const allVehicles = [...vehicleData, ...onRouteVehicles];
-        
+
         if (mounted) {
           processIncidents(incidentList, setIncidents);
           setVehicles(allVehicles);
@@ -296,10 +304,35 @@ export default function MapPage() {
         console.error('[MapPage] error loading data', err);
       }
     };
-    
+
+    // Initial fetch
     fetchData();
-    
-    // Fetch vehicle locations from Redis every 5 seconds
+
+    // WebSocket Connection
+    websocketService.connect(
+      'http://localhost:8080/ws',
+      () => {
+        // console.log('[MapPage] Connected to WebSocket');
+
+        // Subscribe to updates -> Trigger Re-fetch
+        incidentReportedSubRef.current = websocketService.subscribe('/topic/incident/reported', () => {
+          // console.log('[MapPage] Reported update -> Refreshing');
+          fetchData();
+        });
+
+        incidentAcceptedSubRef.current = websocketService.subscribe('/topic/incident/accepted', () => {
+          // console.log('[MapPage] Accepted update -> Refreshing');
+          fetchData();
+        });
+
+        vehicleSubRef.current = websocketService.subscribe('/topic/vehicle/available', () => {
+          fetchData();
+        });
+      },
+      (err) => console.error('[MapPage] WS Error:', err)
+    );
+
+    // Fetch vehicle locations from Redis every 1 second (faster for smooth movement)
     const locationInterval = setInterval(async () => {
       try {
         const response = await fetch('http://localhost:8080/test/vehicle-location/redis/all');
@@ -307,7 +340,7 @@ export default function MapPage() {
           const locations = await response.json();
           if (mounted) {
             setVehicleLocations(locations);
-            
+
             // Fetch route points for vehicles that have routes
             const routePromises = [];
             Object.keys(locations).forEach(key => {
@@ -321,7 +354,7 @@ export default function MapPage() {
                 );
               }
             });
-            
+
             if (routePromises.length > 0) {
               Promise.all(routePromises).then(results => {
                 const routes = {};
@@ -336,17 +369,22 @@ export default function MapPage() {
       } catch (err) {
         console.error('[MapPage] error fetching vehicle locations', err);
       }
-    }, 5000);
+    }, 1000); // 1s update for smoother feeling
 
-    return () => { 
+    return () => {
       mounted = false;
       clearInterval(locationInterval);
+
+      // Unsubscribe
+      if (incidentReportedSubRef.current) websocketService.unsubscribe(incidentReportedSubRef.current);
+      if (incidentAcceptedSubRef.current) websocketService.unsubscribe(incidentAcceptedSubRef.current);
+      if (vehicleSubRef.current) websocketService.unsubscribe(vehicleSubRef.current);
     };
   }, []);
 
   // Cairo, Egypt coordinates
   const center = [30.0444, 31.2357];
-  
+
   // Process incidents helper function
   const processIncidents = (list, setIncidents) => {
     const seenIds = new Set();
@@ -414,17 +452,17 @@ export default function MapPage() {
         {vehicles.map((vehicle) => {
           const locationKey = `vehicle:location:${vehicle.vehicleId}`;
           const location = vehicleLocations[locationKey];
-          
+
           if (!location?.latitude || !location?.longitude) {
             return null;
           }
-          
+
           const position = [parseFloat(parseFloat(location.latitude).toFixed(8)), parseFloat(parseFloat(location.longitude).toFixed(8))];
           const vehicleType = (vehicle.vehicleType || '').toLowerCase();
           let iconType = 'ambulance';
           if (vehicleType.includes('police')) iconType = 'police';
           else if (vehicleType.includes('fire')) iconType = 'fire';
-          
+
           return (
             <React.Fragment key={vehicle.vehicleId}>
               <Marker position={position} icon={getVehicleIcon(iconType)}>
@@ -434,7 +472,7 @@ export default function MapPage() {
                   <div>Status: {vehicle.status}</div>
                 </Popup>
               </Marker>
-              
+
               {/* Show route line if vehicle is en route */}
               {vehicleRoutes[vehicle.vehicleId]?.hasRoute && (
                 <Polyline

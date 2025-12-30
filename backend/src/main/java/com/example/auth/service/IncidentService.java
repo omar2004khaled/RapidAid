@@ -39,6 +39,9 @@ public class IncidentService {
             incident.setTimeResolved(LocalDateTime.now());
             notificationService.updateIncidentResolvedNotification(incident);
             incidentRepository.save(incident);
+            
+            // Notify clients that the accepted/assigned list has changed
+            webSocketNotificationService.notifyAcceptedIncidentUpdate();
         }
     }
 
@@ -154,6 +157,9 @@ public class IncidentService {
 
         // Create a new notification for the resolved incident
         notificationService.updateIncidentResolvedNotification(updatedIncident);
+        
+        // Notify clients that the accepted/assigned list has changed
+        webSocketNotificationService.notifyAcceptedIncidentUpdate();
 
         return incidentMapper.toResponse(updatedIncident);
     }

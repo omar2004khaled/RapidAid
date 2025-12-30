@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import "../css/DispatcherCss.css";
+import Notification from "../Components/Notification";
 import incidentAPI from '../services/incidentAPI';
 import vehicleAPI from '../services/vehicleAPI';
 import assignmentAPI from '../services/assignmentAPI';
@@ -12,7 +13,7 @@ function DispatcherPage() {
     const [incidentsMap, setIncidentsMap] = useState({ reported: [], accepted: [] });
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState('');
-    
+
     const reportedSubscriptionRef = useRef(null);
     const acceptedSubscriptionRef = useRef(null);
     const vehicleSubscriptionRef = useRef(null);
@@ -24,11 +25,11 @@ function DispatcherPage() {
                 incidentAPI.getAllIncidents(),
                 vehicleAPI.getVehiclesByStatus('AVAILABLE')
             ]);
-            
+
             const incidents = incidentsData.content || incidentsData;
             const reported = incidents.filter(i => i.lifeCycleStatus === 'REPORTED');
             const accepted = incidents.filter(i => i.lifeCycleStatus === 'ACCEPTED' || i.lifeCycleStatus === 'ASSIGNED');
-            
+
             setIncidentsMap({ reported, accepted });
             processVehicles(vehiclesData);
             setError('');
@@ -51,7 +52,7 @@ function DispatcherPage() {
             acc[type].push(vehicle);
             return acc;
         }, {});
-        
+
         const transformedUnits = Object.entries(vehicleGroups).map(([type, vehicles]) => ({
             id: type,
             type: type,
@@ -62,18 +63,18 @@ function DispatcherPage() {
 
     useEffect(() => {
         const activeIncidents = [...incidentsMap.reported, ...incidentsMap.accepted];
-        
+
         setEmergencyBoard(prevBoard => {
             return activeIncidents.map(incident => {
                 // Check if we already have this incident in state
                 const existing = prevBoard.find(e => e.id === incident.incidentId);
                 console.log('Processing incident for emergency board:', incident);
-                
+
                 return {
                     id: incident.incidentId,
                     type: incident.incidentType,
-                    location: (incident.latitude && incident.longitude) ? 
-                        `${incident.latitude}, ${incident.longitude}` : 
+                    location: (incident.latitude && incident.longitude) ?
+                        `${incident.latitude}, ${incident.longitude}` :
                         'Location not specified',
                     des: 'Emergency incident',
                     state: getPriorityLabel(incident.severityLevel),
@@ -89,13 +90,13 @@ function DispatcherPage() {
 
     useEffect(() => {
         fetchData();
-        
+
         // Connect to WebSocket (will use existing connection if already connected)
         websocketService.connect(
             'http://localhost:8080/ws',
             () => {
                 console.log('[Dispatcher] Connected to WebSocket');
-                
+
                 // Subscribe to reported incident updates
                 reportedSubscriptionRef.current = websocketService.subscribe('/topic/incident/reported', (data) => {
                     console.log('[Dispatcher] Reported incidents update:', data);
@@ -107,7 +108,7 @@ function DispatcherPage() {
                     console.log('[Dispatcher] Accepted incidents update:', data);
                     setIncidentsMap(prev => ({ ...prev, accepted: data }));
                 });
-                
+
                 // Subscribe to vehicle updates
                 vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicle/available', (data) => {
                     console.log('[Dispatcher] Vehicle update received:', data);
@@ -118,7 +119,7 @@ function DispatcherPage() {
                 console.error('[Dispatcher] WebSocket connection error:', error);
             }
         );
-        
+
         // Don't disconnect on unmount since Dashboard manages the connection
         return () => {
             // Unsubscribe from topics when component unmounts
@@ -127,7 +128,7 @@ function DispatcherPage() {
             if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
         };
     }, []);
-    
+
     const getPriorityLabel = (level) => {
         if (level >= 4) return 'Critical';
         if (level >= 3) return 'High';
@@ -147,7 +148,7 @@ function DispatcherPage() {
     const updateVehicleCount = (emergencyId, vehicleTypeKey, delta) => {
         const vehicleType = getVehicleTypeMapping(vehicleTypeKey);
         const vehicle = vehicle_inventory.find(v => v.type === vehicleType);
-        
+
         // Check if we have enough inventory when adding vehicles to emergency
         if (delta > 0 && (!vehicle || parseInt(vehicle.inventory) <= 0)) {
             alert(`No ${vehicleType} available!`);
@@ -187,17 +188,17 @@ function DispatcherPage() {
 
             // Determine which vehicles to assign
             const assignments = [];
-            
+
             if (emergency.police > 0) {
                 const policeVehicles = availableVehicles.filter(v => v.vehicleType === 'POLICE_CAR').slice(0, emergency.police);
                 policeVehicles.forEach(v => assignments.push({ incidentId: emergency.id, vehicleId: v.vehicleId }));
             }
-            
+
             if (emergency.fire > 0) {
                 const fireVehicles = availableVehicles.filter(v => v.vehicleType === 'FIRE_TRUCK').slice(0, emergency.fire);
                 fireVehicles.forEach(v => assignments.push({ incidentId: emergency.id, vehicleId: v.vehicleId }));
             }
-            
+
             if (emergency.ambulance > 0) {
                 const ambulances = availableVehicles.filter(v => v.vehicleType === 'AMBULANCE').slice(0, emergency.ambulance);
                 ambulances.forEach(v => assignments.push({ incidentId: emergency.id, vehicleId: v.vehicleId }));
@@ -211,9 +212,9 @@ function DispatcherPage() {
 
             // Create assignments
             await Promise.all(assignments.map(a => assignmentAPI.createAssignment(a)));
-            
+
             alert(`Successfully dispatched to ${emergency.location}:\n- Police: ${emergency.police}\n- Fire: ${emergency.fire}\n- Ambulance: ${emergency.ambulance}`);
-            
+
             // Refresh data
             fetchData();
         } catch (err) {
@@ -221,93 +222,103 @@ function DispatcherPage() {
             alert('Failed to dispatch: ' + err.message);
         }
     };
-  if (loading && emergencyBoard.length === 0) {
-    return (
-      <div className="flex items-center justify-center p-8">
-        <div className="text-gray-600">Loading dispatcher data...</div>
-      </div>
-    );
-  }
-
-  return (
-    <div>
-        {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg m-4">
-                <p className="text-sm text-red-700">{error}</p>
-                <button 
-                    onClick={fetchData}
-                    className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-                >
-                    Retry
-                </button>
+    if (loading && emergencyBoard.length === 0) {
+        return (
+            <div className="flex items-center justify-center p-8">
+                <div className="text-gray-600">Loading dispatcher data...</div>
             </div>
-        )}
-        <div className="dispatcher-content">
-            <div className="vehicle-inventory">
-                <h2>Vehicle Inventory</h2>
-                <div className="vehicle-items-container">
-                    {vehicle_inventory.map(vehicle => (
-                        <div key={vehicle.id} className="vehicle-item">
-                            <h3>{vehicle.type}</h3>
-                            <p>{vehicle.inventory}</p>
-                        </div>
-                    ))}
+        );
+    }
+
+    return (
+        <div className="flex flex-col min-h-screen bg-gray-50">
+            {/* Header */}
+            <div className="bg-white shadow-sm border-b px-6 py-4 flex justify-between items-center">
+                <h1 className="text-2xl font-bold text-gray-800">Dispatcher Command Center</h1>
+                <div className="flex items-center gap-4">
+                    <div className="text-sm text-gray-500 font-medium">
+                        {availableVehicles.length} Vehicles
+                    </div>
+                    <Notification />
                 </div>
             </div>
-            <div className="emergency-board">
-                <button>Filter</button>
-                <button>Sort</button>
-                <div className="emergency-item-container">
-                    {emergencyBoard.map(emergency => (
-                        <div key={emergency.id} className="emergency-item">
-                            <div className="emergency-header">
-                                <h3>{emergency.type}</h3>
-                                <span className="emergency-state">{emergency.state}</span>
+            {error && (
+                <div className="p-4 bg-red-50 border border-red-200 rounded-lg m-4">
+                    <p className="text-sm text-red-700">{error}</p>
+                    <button
+                        onClick={fetchData}
+                        className="mt-2 px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+                    >
+                        Retry
+                    </button>
+                </div>
+            )}
+            <div className="dispatcher-content">
+                <div className="vehicle-inventory">
+                    <h2>Vehicle Inventory</h2>
+                    <div className="vehicle-items-container">
+                        {vehicle_inventory.map(vehicle => (
+                            <div key={vehicle.id} className="vehicle-item">
+                                <h3>{vehicle.type}</h3>
+                                <p>{vehicle.inventory}</p>
                             </div>
-                            <p>Location: {emergency.location}</p>
-                            <p>Description: {emergency.des}</p>
-                            
-                            <div className="vehicle-counters">
-                                {emergency.type === 'POLICE' && (
-                                    <div className="counter-row">
-                                        <span>Police:</span>
-                                        <div className="counter-controls">
-                                            <button onClick={() => updateVehicleCount(emergency.id, 'police', -1)}>-</button>
-                                            <span>{emergency.police}</span>
-                                            <button onClick={() => updateVehicleCount(emergency.id, 'police', 1)}>+</button>
+                        ))}
+                    </div>
+                </div>
+                <div className="emergency-board">
+                    <button>Filter</button>
+                    <button>Sort</button>
+                    <div className="emergency-item-container">
+                        {emergencyBoard.map(emergency => (
+                            <div key={emergency.id} className="emergency-item">
+                                <div className="emergency-header">
+                                    <h3>{emergency.type}</h3>
+                                    <span className="emergency-state">{emergency.state}</span>
+                                </div>
+                                <p>Location: {emergency.location}</p>
+                                <p>Description: {emergency.des}</p>
+
+                                <div className="vehicle-counters">
+                                    {emergency.type === 'POLICE' && (
+                                        <div className="counter-row">
+                                            <span>Police:</span>
+                                            <div className="counter-controls">
+                                                <button onClick={() => updateVehicleCount(emergency.id, 'police', -1)}>-</button>
+                                                <span>{emergency.police}</span>
+                                                <button onClick={() => updateVehicleCount(emergency.id, 'police', 1)}>+</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                {emergency.type === 'FIRE' && (
-                                    <div className="counter-row">
-                                        <span>Fire:</span>
-                                        <div className="counter-controls">
-                                            <button onClick={() => updateVehicleCount(emergency.id, 'fire', -1)}>-</button>
-                                            <span>{emergency.fire}</span>
-                                            <button onClick={() => updateVehicleCount(emergency.id, 'fire', 1)}>+</button>
+                                    )}
+                                    {emergency.type === 'FIRE' && (
+                                        <div className="counter-row">
+                                            <span>Fire:</span>
+                                            <div className="counter-controls">
+                                                <button onClick={() => updateVehicleCount(emergency.id, 'fire', -1)}>-</button>
+                                                <span>{emergency.fire}</span>
+                                                <button onClick={() => updateVehicleCount(emergency.id, 'fire', 1)}>+</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
-                                {emergency.type === 'MEDICAL' && (
-                                    <div className="counter-row">
-                                        <span>Ambulance:</span>
-                                        <div className="counter-controls">
-                                            <button onClick={() => updateVehicleCount(emergency.id, 'ambulance', -1)}>-</button>
-                                            <span>{emergency.ambulance}</span>
-                                            <button onClick={() => updateVehicleCount(emergency.id, 'ambulance', 1)}>+</button>
+                                    )}
+                                    {emergency.type === 'MEDICAL' && (
+                                        <div className="counter-row">
+                                            <span>Ambulance:</span>
+                                            <div className="counter-controls">
+                                                <button onClick={() => updateVehicleCount(emergency.id, 'ambulance', -1)}>-</button>
+                                                <span>{emergency.ambulance}</span>
+                                                <button onClick={() => updateVehicleCount(emergency.id, 'ambulance', 1)}>+</button>
+                                            </div>
                                         </div>
-                                    </div>
-                                )}
+                                    )}
+                                </div>
+
+                                <button className="dispatch-btn" onClick={() => handleDispatch(emergency)}>Dispatch</button>
                             </div>
-                            
-                            <button className="dispatch-btn" onClick={() => handleDispatch(emergency)}>Dispatch</button>
-                        </div>
-                    ))}
+                        ))}
+                    </div>
                 </div>
             </div>
         </div>
-    </div>
-  );
+    );
 }
 
 export default DispatcherPage;
