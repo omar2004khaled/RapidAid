@@ -66,4 +66,19 @@ public interface IncidentRepository extends JpaRepository<Incident, Integer> {
                         )
                         """, nativeQuery = true)
         List<Incident> findAllUnassignedIncidentsForTwoMinutes();
+
+
+    @Query(value = """
+        SELECT *
+        FROM incident i
+        WHERE i.life_cycle_status = 'REPORTED'
+        ORDER BY 
+            (
+              (i.severity_level * 15) 
+              + 
+              TIMESTAMPDIFF(MINUTE, i.time_reported, NOW())
+            ) DESC
+        """, nativeQuery = true)
+    List<Incident> findAllReportedIncidentsSorted();
+
 }

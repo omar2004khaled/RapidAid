@@ -189,8 +189,7 @@ public class VehicleLocationService {
             .findByVehicleVehicleIdAndAssignmentStatusNot(vehicleId, "COMPLETED");
         
         for (Assignment assignment : activeAssignments) {
-            assignment.setArrivedAt(LocalDateTime.now());
-            assignment.setAssignmentStatus(com.example.auth.enums.AssignmentStatus.ARRIVED);
+            assignment.setArrived();
             assignmentRepository.save(assignment);
         }
     }

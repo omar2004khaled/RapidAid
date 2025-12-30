@@ -27,7 +27,7 @@ public class VehicleAssignmentService {
     @Value("${vehicle.assignment.enabled:true}")
     private boolean assignmentEnabled;
 
-    @Value("${vehicle.assignment.service-time-seconds:30}")
+    @Value("${vehicle.assignment.service-time-seconds}")
     private int serviceTimeSeconds;
 
     @Autowired
@@ -130,8 +130,7 @@ public class VehicleAssignmentService {
     }
 
     private void completeAssignment(Assignment assignment, Vehicle vehicle) {
-        assignment.setCompletedAt(LocalDateTime.now());
-        assignment.setAssignmentStatus(AssignmentStatus.COMPLETED);
+        assignment.setCompleted();
         assignmentRepository.save(assignment);
 
         // Check if vehicle has other assignments

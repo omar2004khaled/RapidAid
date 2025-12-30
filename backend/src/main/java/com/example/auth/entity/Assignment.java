@@ -64,4 +64,26 @@ public class Assignment {
     @Enumerated(EnumType.STRING)
     @Builder.Default
     private Set<VehicleType> preferredVehicleTypes = new HashSet<>();
+
+
+    public void setEnroute() {
+        this.assignmentStatus = AssignmentStatus.ENROUTE;
+        this.acceptedAt = LocalDateTime.now();
+    }
+
+    public void setAssigned() {
+        this.assignmentStatus = AssignmentStatus.ASSIGNED;
+        this.acceptedAt = LocalDateTime.now();
+    }
+
+    public void setArrived() {
+        this.assignmentStatus = AssignmentStatus.ARRIVED;
+        this.arrivedAt = LocalDateTime.now();
+    }
+
+    public void setCompleted() {
+        this.assignmentStatus = AssignmentStatus.COMPLETED;
+        this.completedAt = LocalDateTime.now();
+    }
+
 }

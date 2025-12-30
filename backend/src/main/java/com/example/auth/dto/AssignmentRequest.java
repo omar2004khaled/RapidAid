@@ -12,7 +12,7 @@ import lombok.NoArgsConstructor;
 public class AssignmentRequest {
     private Integer incidentId;
     private Integer vehicleId;
-    private Integer assignedByUserId;
+    private Long assignedByUserId;
     private AssignmentStatus assignmentStatus;
     private String notes;
 }
