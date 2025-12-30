@@ -6,23 +6,21 @@
         <collectionProp name="Arguments.arguments">
           <elementProp name="type_1" elementType="Argument">
             <stringProp name="Argument.name">type_1</stringProp>
-            <stringProp name="Argument.value">MEDICAL</stringProp>
+            <stringProp name="Argument.value">POLICE_CAR</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="type_2" elementType="Argument">
             <stringProp name="Argument.name">type_2</stringProp>
-            <stringProp name="Argument.value">FIRE</stringProp>
+            <stringProp name="Argument.value">AMBULANCE</stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
           <elementProp name="type_3" elementType="Argument">
             <stringProp name="Argument.name">type_3</stringProp>
-            <stringProp name="Argument.value">POLICE</stringProp>
+            <stringProp name="Argument.value">FIRE_TRUCK </stringProp>
             <stringProp name="Argument.metadata">=</stringProp>
           </elementProp>
         </collectionProp>
       </elementProp>
-      <boolProp name="TestPlan.functional_mode">false</boolProp>
-      <boolProp name="TestPlan.serialize_threadgroups">false</boolProp>
     </TestPlan>
     <hashTree>
       <ThreadGroup guiclass="ThreadGroupGui" testclass="ThreadGroup" testname="Thread Group">
@@ -40,7 +38,7 @@
           <collectionProp name="HeaderManager.headers">
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">Content-Type</stringProp>
-              <stringProp name="Header.value">application/json</stringProp>
+              <stringProp name="Header.value">application/json </stringProp>
             </elementProp>
           </collectionProp>
         </HeaderManager>
@@ -48,7 +46,7 @@
         <HTTPSamplerProxy guiclass="HttpTestSampleGui" testclass="HTTPSamplerProxy" testname="HTTP Request">
           <stringProp name="HTTPSampler.domain">localhost</stringProp>
           <stringProp name="HTTPSampler.port">8080</stringProp>
-          <stringProp name="HTTPSampler.path">/api/incident/create-incident</stringProp>
+          <stringProp name="HTTPSampler.path">/api/vehicle/create</stringProp>
           <boolProp name="HTTPSampler.follow_redirects">true</boolProp>
           <stringProp name="HTTPSampler.method">POST</stringProp>
           <boolProp name="HTTPSampler.use_keepalive">true</boolProp>
@@ -58,19 +56,12 @@
               <elementProp name="" elementType="HTTPArgument">
                 <boolProp name="HTTPArgument.always_encode">false</boolProp>
                 <stringProp name="Argument.value">{&#xd;
-  &quot;incidentType&quot;: &quot;${__V(type_${__Random(1,3)})}&quot;, &#xd;
-  &quot;reportedByUserID&quot;: 1,&#xd;
-  &quot;address&quot;: {&#xd;
-    &quot;city&quot;: &quot;Cairo&quot;,&#xd;
-    &quot;neighborhood&quot;: &quot;Nasr City&quot;,&#xd;
-    &quot;street&quot;: &quot;Abbas El Akkad&quot;,&#xd;
-    &quot;buildingNo&quot;: &quot;${__Random(1,99)}&quot;,&#xd;
-    &quot;apartmentNo&quot;: &quot;${__Random(1,20)}&quot;,&#xd;
-    &quot;latitude&quot;: ${__groovy(new java.text.DecimalFormat(&quot;0.000000&quot;).format(29.932820 + Math.random() * (30.083918 - 29.932820)))},&#xd;
-    &quot;longitude&quot;: ${__groovy(new java.text.DecimalFormat(&quot;0.000000&quot;).format(31.287689 + Math.random() * (31.525955 - 31.287689)))}&#xd;
-  },&#xd;
-  &quot;severity_level&quot;: ${__Random(1,5)}, &#xd;
-  &quot;lifeCycleStatus&quot;: &quot;REPORTED&quot;&#xd;
+  &quot;registrationNumber&quot;: &quot;${__groovy(org.apache.commons.lang3.RandomStringUtils.randomAlphanumeric(6))}&quot;,&#xd;
+  &quot;vehicleType&quot;: &quot;${__V(type_${__Random(1,3)})}&quot;,&#xd;
+  &quot;capacity&quot;: &quot;${__Random(1,10)}&quot;,&#xd;
+  &quot;status&quot;: &quot;AVAILABLE&quot;,&#xd;
+  &quot;lastLatitude&quot;: ${__groovy(new java.text.DecimalFormat(&quot;0.000000&quot;).format(29.932820 + Math.random() * (30.083918 - 29.932820)))},&#xd;
+  &quot;lastLongitude&quot;: ${__groovy(new java.text.DecimalFormat(&quot;0.000000&quot;).format(31.287689 + Math.random() * (31.525955 - 31.287689)))}&#xd;
 }</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
               </elementProp>

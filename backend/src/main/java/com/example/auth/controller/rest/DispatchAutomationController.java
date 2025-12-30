@@ -17,7 +17,7 @@ public class DispatchAutomationController {
     }
 
     @PostMapping("/enabled")
-    public void setEnabled() {
-        config.setEnabled(!config.isEnabled());
+    public void setEnabled(@RequestParam boolean enabled) {
+        config.setEnabled(enabled);
     }
 }

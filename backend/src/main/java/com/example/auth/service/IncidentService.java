@@ -37,6 +37,7 @@ public class IncidentService {
         if (allCompleted) {
             incident.setLifeCycleStatus(IncidentStatus.RESOLVED);
             incident.setTimeResolved(LocalDateTime.now());
+            notificationService.updateIncidentResolvedNotification(incident);
             incidentRepository.save(incident);
         }
     }
