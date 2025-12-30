@@ -6,6 +6,7 @@ import incidentAPI from '../services/incidentAPI';
 import vehicleAPI from '../services/vehicleAPI';
 import assignmentAPI from '../services/assignmentAPI';
 import websocketService from '../services/websocketService';
+import jmeterAPI from '../services/jmeterAPI';
 import '../css/DispatcherCss.css';
 import MapPage from "../pages/MapPage";
 import LocationPickerMap from './LocationPickerMap';
@@ -27,6 +28,7 @@ const Dashboard = () => {
   const [newReporter, setNewReporter] = useState({ name: '', phone: '' });
   const [emergencyUnits, setEmergencyUnits] = useState([]);
   const [incidents, setIncidents] = useState([]);
+  const [numberOfIncidents, setNumberOfIncidents] = useState(0);
   const [pendingUsers, setPendingUsers] = useState([]);
   const [availableVehicles, setAvailableVehicles] = useState([]);
   const [showAssignModal, setShowAssignModal] = useState(false);
@@ -262,6 +264,21 @@ const Dashboard = () => {
     }
   };
 
+  const addIncidents = async () => {
+    if (numberOfIncidents <= 0) {
+      showError('Please enter a valid number of incidents to add');
+      return;
+    }
+    try {
+      await jmeterAPI.createJmeterIncidents(numberOfIncidents);
+      showSuccess(`${numberOfIncidents} incidents added successfully!`);
+      setNumberOfIncidents(0);
+    } catch (error) {
+      console.error('Error adding incidents:', error);
+      showError(error.message || 'Failed to add incidents');
+    }
+  };
+
 
   const addUnit = async () => {
     if (!newUnit.type || newUnit.count <= 0) {
@@ -492,6 +509,25 @@ const Dashboard = () => {
       <div className="max-w-7xl mx-auto px-4 py-6">
         {activeTab === 'incidents' && (
           <div className="bg-white rounded-lg shadow p-6">
+              <h2 className="text-xl font-semibold mb-4">Add New Incidents</h2>
+              <div className="mb-6 p-4 bg-gray-50 rounded">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div>
+                  <input
+                    type="number"
+                    placeholder="Number of Incidents"
+                    min={0}
+                    value={numberOfIncidents}
+                    onChange={(e) => setNumberOfIncidents(e.target.value)}
+                    className="border rounded px-3 py-2 w-full"
+                    required
+                  />
+                </div>
+                <button onClick={addIncidents} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                  Add Incidents
+                </button>
+              </div>
+            </div>
             <h2 className="text-xl font-semibold mb-4">Reported Incidents</h2>
             <div className="emergency-item-container">
               {incidents.map(incident => (

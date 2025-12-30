@@ -155,7 +155,6 @@ CREATE TABLE Sensor_Reading (
 CREATE TABLE Notification (
     notification_id INT AUTO_INCREMENT PRIMARY KEY,
     type ENUM('NEW_INCIDENT','INCIDENT_RESOLVED','INCIDENT_UNASSIGNED'),
-    message VARCHAR(255),
     timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status ENUM('UNREAD','READ') DEFAULT 'UNREAD',
     receiver_user_id INT NULL,
