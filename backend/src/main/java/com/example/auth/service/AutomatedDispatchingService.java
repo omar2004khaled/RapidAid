@@ -9,6 +9,7 @@ import com.example.auth.enums.ServiceType;
 import com.example.auth.enums.VehicleType;
 import com.example.auth.repository.IncidentRepository;
 import com.example.auth.repository.VehicleRepository;
+import com.graphhopper.GraphHopper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Scheduled;
@@ -28,6 +29,7 @@ public class AutomatedDispatchingService {
     private final VehicleRepository vehicleRepository;
 
     private final DispatchAutomationConfig config;
+
 
     private final static int EARTH_RADIUS = 6371;
 

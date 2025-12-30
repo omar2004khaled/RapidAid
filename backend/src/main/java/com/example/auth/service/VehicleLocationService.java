@@ -8,6 +8,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -39,6 +40,7 @@ public class VehicleLocationService {
         redisTemplate.opsForHash().put(key, "timestamp", LocalDateTime.now().toString());
     }
 
+    @Transactional
     @Scheduled(fixedRate = 30000) 
     public void syncLocationsToDatabase() {
         Set<String> keys = redisTemplate.keys(LOCATION_KEY_PREFIX + "*");
@@ -46,18 +48,9 @@ public class VehicleLocationService {
         for (String key : keys) {
             try {
                 Integer vehicleId = Integer.valueOf(key.replace(LOCATION_KEY_PREFIX, ""));
-                String latStr = (String) redisTemplate.opsForHash().get(key, "latitude");
-                String lngStr = (String) redisTemplate.opsForHash().get(key, "longitude");
-                
-                if (latStr != null && lngStr != null) {
-                    Vehicle vehicle = vehicleRepository.findById(vehicleId).orElse(null);
-                    if (vehicle != null) {
-                        vehicle.setLastLatitude(new BigDecimal(latStr));
-                        vehicle.setLastLongitude(new BigDecimal(lngStr));
-                        vehicle.setLastUpdatedTime(LocalDateTime.now());
-                        vehicleRepository.save(vehicle);
-                    }
-                }
+                Vehicle vehicle = vehicleRepository.findById(vehicleId).orElse(null);
+                if (vehicle == null) continue;
+                saveVehicleLocationToDatabase(vehicle);
             } catch (Exception e) {
             }
         }
@@ -65,6 +58,17 @@ public class VehicleLocationService {
 
     @org.springframework.beans.factory.annotation.Value("${vehicle.simulation.speed-factor:1.0}")
     private double simulationSpeedFactor;
+    @Transactional
+    public void saveVehicleLocationToDatabase(Vehicle vehicle) {
+        String key = LOCATION_KEY_PREFIX + vehicle.getVehicleId();
+        String latStr = (String) redisTemplate.opsForHash().get(key, "latitude");
+        String lngStr = (String) redisTemplate.opsForHash().get(key, "longitude");
+
+        vehicle.setLastLatitude(new BigDecimal(latStr));
+        vehicle.setLastLongitude(new BigDecimal(lngStr));
+        vehicle.setLastUpdatedTime(LocalDateTime.now());
+        vehicleRepository.save(vehicle);
+    }
 
     public void calculateAndStoreRoute(Integer vehicleId, BigDecimal targetLat, BigDecimal targetLng) {
         Vehicle vehicle = vehicleRepository.findById(vehicleId).orElse(null);
@@ -107,7 +111,7 @@ public class VehicleLocationService {
         }
     }
 
-    @Scheduled(fixedRate = 5000) // Update every 5 seconds
+    @Scheduled(fixedRate = 3500) // Update every 5 seconds
     public void updateVehiclePositionsAlongRoute() {
         try {
             // Get all vehicles from database and check if they have routes
