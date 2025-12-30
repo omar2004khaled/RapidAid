@@ -125,6 +125,7 @@ public class VehicleAssignmentService {
     private void handleServiceTime(Assignment assignment, Vehicle vehicle) {
         LocalDateTime arrivedAt = assignment.getArrivedAt();
         if (arrivedAt != null && arrivedAt.plusSeconds(serviceTimeSeconds).isBefore(LocalDateTime.now())) {
+
             completeAssignment(assignment, vehicle);
         }
     }
@@ -138,6 +139,7 @@ public class VehicleAssignmentService {
                 .findByVehicleVehicleIdAndAssignmentStatusNot(vehicle.getVehicleId(), "COMPLETED");
 
         if (remainingAssignments.isEmpty()) {
+            vehicleLocationService.saveVehicleLocationToDatabase(vehicle);
             vehicle.setAvailable();
             vehicleRepository.save(vehicle);
             logger.info("Vehicle {} completed assignment and is now available", vehicle.getVehicleId());

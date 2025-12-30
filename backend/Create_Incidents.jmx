@@ -36,7 +36,7 @@
         </elementProp>
       </ThreadGroup>
       <hashTree>
-        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager">
+        <HeaderManager guiclass="HeaderPanel" testclass="HeaderManager" testname="HTTP Header Manager" enabled="true">
           <collectionProp name="HeaderManager.headers">
             <elementProp name="" elementType="Header">
               <stringProp name="Header.name">Content-Type</stringProp>
@@ -69,7 +69,7 @@
     &quot;latitude&quot;: ${__groovy(new java.text.DecimalFormat(&quot;0.000000&quot;).format(29.932820 + Math.random() * (30.083918 - 29.932820)))},&#xd;
     &quot;longitude&quot;: ${__groovy(new java.text.DecimalFormat(&quot;0.000000&quot;).format(31.287689 + Math.random() * (31.525955 - 31.287689)))}&#xd;
   },&#xd;
-  &quot;severity_level&quot;: ${__Random(1,5)}, &#xd;
+  &quot;severityLevel&quot;: ${__Random(1,5)}, &#xd;
   &quot;lifeCycleStatus&quot;: &quot;REPORTED&quot;&#xd;
 }</stringProp>
                 <stringProp name="Argument.metadata">=</stringProp>
