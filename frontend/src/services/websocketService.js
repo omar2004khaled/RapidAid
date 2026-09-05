@@ -1,186 +1,183 @@
-import SockJS from 'sockjs-client';
-import { Stomp } from '@stomp/stompjs';
+import { Client } from '@stomp/stompjs';
 
 /**
- * WebSocket Service
- * Manages WebSocket connections using SockJS and STOMP
+ * WebSocket Service using modern @stomp/stompjs Client
+ * Communicates directly with Spring Boot STOMP broker at /ws via native WebSockets.
  */
 class WebSocketService {
   constructor() {
-    this.stompClient = null;
-    this.subscriptions = new Map();
-    this.reconnectDelay = 5000;
-    this.isConnecting = false;
-    this.connectionUrl = null;
-    this.onConnectCallbacks = [];
-    this.onErrorCallbacks = [];
+    this.client = null;
+    this.registeredSubscriptions = new Map(); // internalId -> { topic, callback }
+    this.activeStompSubs = new Map(); // internalId -> StompSubscription
+    this.connected = false;
+    this.onConnectCallbacks = new Set();
+    this.onErrorCallbacks = new Set();
   }
 
-  /**
-   * Connect to WebSocket server
-   * @param {string} url - WebSocket endpoint URL (default: http://localhost:8080/ws)
-   * @param {function} onConnect - Callback when connection is established
-   * @param {function} onError - Callback when connection error occurs
-   */
-  connect(url = 'http://localhost:8080/ws', onConnect, onError) {
-    // If already connected, just call the onConnect callback
-    if (this.stompClient && this.stompClient.connected) {
-      console.log('[WebSocket] Already connected, executing callback');
-      if (onConnect) onConnect();
-      return;
-    }
+  connect(url = 'ws://localhost:8080/ws', onConnect, onError) {
+    if (onConnect) this.onConnectCallbacks.add(onConnect);
+    if (onError) this.onErrorCallbacks.add(onError);
 
-    // If connecting, queue the callbacks
-    if (this.isConnecting) {
-      console.log('[WebSocket] Connection in progress, queueing callbacks');
-      if (onConnect) this.onConnectCallbacks.push(onConnect);
-      if (onError) this.onErrorCallbacks.push(onError);
-      return;
-    }
-
-    this.isConnecting = true;
-    this.connectionUrl = url;
-    if (onConnect) this.onConnectCallbacks.push(onConnect);
-    if (onError) this.onErrorCallbacks.push(onError);
-
-    // Pass a factory function instead of an instance for auto-reconnect support
-    this.stompClient = Stomp.over(() => new SockJS(url));
-
-    // Disable debug messages in production
-    if (process.env.NODE_ENV === 'production') {
-      this.stompClient.debug = () => {};
-    }
-
-    this.stompClient.connect(
-      {},
-      (frame) => {
-        this.isConnecting = false;
-        console.log('[WebSocket] Connected:', frame);
-        
-        // Execute all queued onConnect callbacks
-        while (this.onConnectCallbacks.length > 0) {
-          const callback = this.onConnectCallbacks.shift();
-          try {
-            callback(frame);
-          } catch (error) {
-            console.error('[WebSocket] Error in onConnect callback:', error);
-          }
+    if (this.client && this.connected) {
+      if (onConnect) {
+        try {
+          onConnect();
+        } catch (e) {
+          console.error('[WebSocket] onConnect error:', e);
         }
-      },
-      (error) => {
-        this.isConnecting = false;
-        console.error('[WebSocket] Connection error:', error);
-        
-        // Execute all queued onError callbacks
-        const errorCallbacks = [...this.onErrorCallbacks];
-        this.onErrorCallbacks = [];
-        errorCallbacks.forEach(callback => {
+      }
+      return;
+    }
+
+    if (this.client) {
+      return;
+    }
+
+    // Convert http to ws URL if needed
+    let brokerURL = url;
+    if (brokerURL.startsWith('http://')) {
+      brokerURL = brokerURL.replace('http://', 'ws://');
+    } else if (brokerURL.startsWith('https://')) {
+      brokerURL = brokerURL.replace('https://', 'wss://');
+    }
+
+    this.client = new Client({
+      brokerURL: brokerURL,
+      reconnectDelay: 3000,
+      heartbeatIncoming: 4000,
+      heartbeatOutgoing: 4000,
+      onConnect: (frame) => {
+        this.connected = true;
+        console.log('[WebSocket] STOMP connected to broker:', brokerURL);
+
+        // Re-establish all registered subscriptions upon connect or reconnect
+        this.registeredSubscriptions.forEach(({ topic, callback }, internalId) => {
           try {
-            callback(error);
-          } catch (err) {
-            console.error('[WebSocket] Error in onError callback:', err);
+            const stompSub = this.client.subscribe(topic, (message) => {
+              try {
+                const data = JSON.parse(message.body);
+                callback(data);
+              } catch (err) {
+                callback(message.body);
+              }
+            });
+            this.activeStompSubs.set(internalId, stompSub);
+            console.log(`[WebSocket] Subscribed to ${topic} (${internalId})`);
+          } catch (e) {
+            console.error(`[WebSocket] Failed to subscribe to ${topic}:`, e);
           }
         });
-        
-        // Auto-reconnect - but don't queue the callbacks again
-        setTimeout(() => {
-          console.log('[WebSocket] Attempting to reconnect...');
-          // Clear old callbacks to avoid duplicates
-          this.onConnectCallbacks = [];
-          this.connect(this.connectionUrl);
-        }, this.reconnectDelay);
-      }
-    );
-  }
 
-  /**
-   * Subscribe to a topic
-   * @param {string} topic - Topic path (e.g., '/topic/incidents')
-   * @param {function} callback - Message handler callback
-   * @returns {string} Subscription ID
-   */
-  subscribe(topic, callback) {
-    if (!this.stompClient || !this.stompClient.connected) {
-      console.error('[WebSocket] Cannot subscribe: not connected');
-      return null;
-    }
-
-    const subscription = this.stompClient.subscribe(topic, (message) => {
-      try {
-        const data = JSON.parse(message.body);
-        callback(data);
-      } catch (error) {
-        console.error('[WebSocket] Error parsing message:', error);
-        callback(message.body);
+        // Trigger onConnect callbacks
+        this.onConnectCallbacks.forEach((cb) => {
+          try {
+            cb(frame);
+          } catch (e) {
+            console.error('[WebSocket] Connect callback error:', e);
+          }
+        });
+      },
+      onStompError: (frame) => {
+        console.error('[WebSocket] STOMP Broker error:', frame);
+        this.onErrorCallbacks.forEach((cb) => {
+          try { cb(frame); } catch (e) { console.error(e); }
+        });
+      },
+      onWebSocketError: (event) => {
+        console.warn('[WebSocket] Transport error (will retry):', event);
+        this.onErrorCallbacks.forEach((cb) => {
+          try { cb(event); } catch (e) { console.error(e); }
+        });
+      },
+      onDisconnect: () => {
+        this.connected = false;
+        this.activeStompSubs.clear();
+        console.log('[WebSocket] STOMP disconnected');
       }
     });
 
-    this.subscriptions.set(subscription.id, subscription);
-    console.log(`[WebSocket] Subscribed to ${topic} with id ${subscription.id}`);
-    return subscription.id;
+    this.client.activate();
   }
 
-  /**
-   * Unsubscribe from a topic
-   * @param {string} subscriptionId - ID of the subscription to unsubscribe
-   */
+  subscribe(topic, callback) {
+    const internalId = 'sub-' + Math.random().toString(36).substring(2, 9);
+    this.registeredSubscriptions.set(internalId, { topic, callback });
+
+    if (this.client && this.connected) {
+      try {
+        const stompSub = this.client.subscribe(topic, (message) => {
+          try {
+            const data = JSON.parse(message.body);
+            callback(data);
+          } catch (err) {
+            callback(message.body);
+          }
+        });
+        this.activeStompSubs.set(internalId, stompSub);
+      } catch (e) {
+        console.error(`[WebSocket] Error subscribing to ${topic}:`, e);
+      }
+    }
+
+    return internalId;
+  }
+
   unsubscribe(subscriptionId) {
-    const subscription = this.subscriptions.get(subscriptionId);
-    if (subscription) {
-      subscription.unsubscribe();
-      this.subscriptions.delete(subscriptionId);
-      console.log(`[WebSocket] Unsubscribed subscription ${subscriptionId}`);
+    if (!subscriptionId) return;
+
+    this.registeredSubscriptions.delete(subscriptionId);
+
+    const stompSub = this.activeStompSubs.get(subscriptionId);
+    if (stompSub) {
+      try {
+        if (typeof stompSub.unsubscribe === 'function') {
+          stompSub.unsubscribe();
+        }
+      } catch (e) {
+        console.warn('[WebSocket] Error unsubscribing:', e);
+      }
+      this.activeStompSubs.delete(subscriptionId);
     }
   }
 
-  /**
-   * Send a message to a destination
-   * @param {string} destination - Destination path (e.g., '/app/message')
-   * @param {object} message - Message object to send
-   */
   send(destination, message) {
-    if (!this.stompClient || !this.stompClient.connected) {
-      console.error('[WebSocket] Cannot send: not connected');
-      return;
+    if (this.client && this.connected) {
+      this.client.publish({
+        destination,
+        body: JSON.stringify(message)
+      });
+    } else {
+      console.warn('[WebSocket] Cannot send, client not connected');
     }
-
-    this.stompClient.send(destination, {}, JSON.stringify(message));
-    console.log(`[WebSocket] Sent message to ${destination}`, message);
   }
 
-  /**
-   * Disconnect from WebSocket server
-   */
   disconnect() {
-    if (this.stompClient) {
-      // Unsubscribe from all topics
-      this.subscriptions.forEach((subscription) => {
-        subscription.unsubscribe();
+    if (this.client) {
+      this.activeStompSubs.forEach((sub) => {
+        try {
+          if (typeof sub.unsubscribe === 'function') sub.unsubscribe();
+        } catch (e) {
+          // ignore
+        }
       });
-      this.subscriptions.clear();
-
-      // Disconnect
-      this.stompClient.disconnect(() => {
-        console.log('[WebSocket] Disconnected');
-      });
-      this.stompClient = null;
+      this.activeStompSubs.clear();
+      this.registeredSubscriptions.clear();
+      try {
+        this.client.deactivate();
+      } catch (e) {
+        // ignore
+      }
+      this.client = null;
+      this.connected = false;
     }
-    
-    // Clear any queued callbacks
-    this.onConnectCallbacks = [];
-    this.onErrorCallbacks = [];
-    this.isConnecting = false;
+    this.onConnectCallbacks.clear();
+    this.onErrorCallbacks.clear();
   }
 
-  /**
-   * Check if connected
-   * @returns {boolean}
-   */
   isConnected() {
-    return this.stompClient && this.stompClient.connected;
+    return this.connected;
   }
 }
 
-// Export singleton instance
 const websocketService = new WebSocketService();
 export default websocketService;

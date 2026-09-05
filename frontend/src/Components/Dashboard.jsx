@@ -1,96 +1,76 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-// import DispatcherPage from '../pages/DispatcherPage';
+import {
+  Shield,
+  Flame,
+  HeartPulse,
+  Plus,
+  Play,
+  Trash2,
+  CheckCircle2,
+  XCircle,
+  MapPin,
+  Car,
+  Users,
+  Clock,
+  AlertTriangle,
+  X,
+  RefreshCw,
+  Send,
+  Zap
+} from 'lucide-react';
+import Navbar from './Navbar';
+import MapPage from '../pages/MapPage';
+import LocationPickerMap from './LocationPickerMap';
+import AnalyticsPage from '../pages/AnalyticsPage';
+import { useToast } from '../contexts/ToastContext';
+import { useConfirm } from '../contexts/ConfirmContext';
 import adminAPI from '../services/adminAPI';
 import incidentAPI from '../services/incidentAPI';
 import vehicleAPI from '../services/vehicleAPI';
 import assignmentAPI from '../services/assignmentAPI';
 import websocketService from '../services/websocketService';
 import jmeterAPI from '../services/jmeterAPI';
-import '../css/DispatcherCss.css';
-import MapPage from "../pages/MapPage";
-import LocationPickerMap from './LocationPickerMap';
-import Notification  from './Notification';
-import AnalyticsPage from "../pages/AnalyticsPage";
-import { useToast } from '../contexts/ToastContext';
-import { useConfirm } from '../contexts/ConfirmContext';
-import automationAPI from "../services/automationAPI.js";
-
+import automationAPI from '../services/automationAPI';
 
 const Dashboard = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { showSuccess, showError, showWarning } = useToast();
   const { confirm } = useConfirm();
+
   const [activeTab, setActiveTab] = useState('incidents');
   const [admins, setAdmins] = useState([]);
   const [newAdmin, setNewAdmin] = useState({ name: '', email: '', password: '' });
-  const [reporters, setReporters] = useState([]);
-  const [newReporter, setNewReporter] = useState({ name: '', phone: '' });
   const [emergencyUnits, setEmergencyUnits] = useState([]);
   const [incidents, setIncidents] = useState([]);
-  const [numberOfIncidents, setNumberOfIncidents] = useState();
-    const [numberOfVehicles, setNumberOfVehicles] = useState();
-    const [pendingUsers, setPendingUsers] = useState([]);
-    const [availableVehicles, setAvailableVehicles] = useState([]);
-    const [showAssignModal, setShowAssignModal] = useState(false);
-
+  const [numberOfIncidents, setNumberOfIncidents] = useState('');
+  const [numberOfVehicles, setNumberOfVehicles] = useState('');
+  const [pendingUsers, setPendingUsers] = useState([]);
+  const [availableVehicles, setAvailableVehicles] = useState([]);
+  const [showAssignModal, setShowAssignModal] = useState(false);
   const [selectedIncident, setSelectedIncident] = useState(null);
-    const [newUnit, setNewUnit] = useState({ type: 'AMBULANCE', count: 0, latitude: 30.0444, longitude: 31.2357 });
-    const [showLocationPicker, setShowLocationPicker] = useState(false);
-    const [showProfileDropdown, setShowProfileDropdown] = useState(false);
-    const [userInfo, setUserInfo] = useState(null);
+  const [newUnit, setNewUnit] = useState({ type: 'AMBULANCE', count: 1, latitude: 30.0444, longitude: 31.2357 });
+  const [showLocationPicker, setShowLocationPicker] = useState(false);
+  const [userInfo, setUserInfo] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const incidentReportedSubscriptionRef = useRef(null);
-  const incidentAcceptedSubscriptionRef = useRef(null);
-  const vehicleSubscriptionRef = useRef(null);
+  const incidentReportedSubRef = useRef(null);
+  const incidentAcceptedSubRef = useRef(null);
+  const vehicleSubRef = useRef(null);
 
-  const fetchData = async () => {
-    await Promise.all([
-      fetchAdmins(),
-      fetchIncidents(),
-      fetchUnits(),
-      fetchPendingUsers()
-    ]);
+  const parseJwt = (token) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      return null;
+    }
   };
-
-  useEffect(() => {
-    fetchData();
-
-    // Connect to WebSocket
-    websocketService.connect(
-      'http://localhost:8080/ws',
-      () => {
-        console.log('[Dashboard] Connected to WebSocket');
-
-        const refreshIncidents = () => {
-          console.log('[Dashboard] Incident update received, refreshing...');
-          fetchIncidents();
-        };
-
-        // Subscribe to incident updates
-        incidentReportedSubscriptionRef.current = websocketService.subscribe('/topic/incident/reported', refreshIncidents);
-        incidentAcceptedSubscriptionRef.current = websocketService.subscribe('/topic/incident/accepted', refreshIncidents);
-
-        // Subscribe to vehicle updates
-        vehicleSubscriptionRef.current = websocketService.subscribe('/topic/vehicle/available', (data) => {
-          console.log('[Dashboard] Vehicle update received:', data);
-          processUnits(data);
-        });
-      },
-      (error) => {
-        console.error('[Dashboard] WebSocket connection error:', error);
-      }
-    );
-
-    // Cleanup on unmount
-    return () => {
-      if (incidentReportedSubscriptionRef.current) websocketService.unsubscribe(incidentReportedSubscriptionRef.current);
-      if (incidentAcceptedSubscriptionRef.current) websocketService.unsubscribe(incidentAcceptedSubscriptionRef.current);
-      if (vehicleSubscriptionRef.current) websocketService.unsubscribe(vehicleSubscriptionRef.current);
-      websocketService.disconnect();
-    };
-  }, []);
 
   useEffect(() => {
     const token = searchParams.get('token');
@@ -104,10 +84,8 @@ const Dashboard = () => {
     } else {
       const storedUser = localStorage.getItem('user');
       const storedToken = localStorage.getItem('authToken');
-
       if (storedUser) {
-        const parsedUser = JSON.parse(storedUser);
-        setUserInfo(parsedUser);
+        try { setUserInfo(JSON.parse(storedUser)); } catch (e) {}
       } else if (storedToken) {
         const userData = parseJwt(storedToken);
         if (userData) {
@@ -118,310 +96,290 @@ const Dashboard = () => {
     }
   }, [searchParams]);
 
+  const fetchData = async () => {
+    setLoading(true);
+    await Promise.all([
+      fetchIncidents(),
+      fetchUnits(),
+      fetchAdmins(),
+      fetchPendingUsers()
+    ]);
+    setLoading(false);
+  };
+
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (showProfileDropdown && !event.target.closest('.profile-dropdown')) {
-        setShowProfileDropdown(false);
+    fetchData();
+
+    websocketService.connect(
+      'ws://localhost:8080/ws',
+      () => {
+        incidentReportedSubRef.current = websocketService.subscribe('/topic/incident/reported', () => {
+          fetchIncidents();
+        });
+        incidentAcceptedSubRef.current = websocketService.subscribe('/topic/incident/accepted', () => {
+          fetchIncidents();
+        });
+        vehicleSubRef.current = websocketService.subscribe('/topic/vehicle/available', (data) => {
+          if (Array.isArray(data)) {
+            processUnits(data);
+          } else {
+            fetchUnits();
+          }
+        });
       }
+    );
+
+    return () => {
+      if (incidentReportedSubRef.current) websocketService.unsubscribe(incidentReportedSubRef.current);
+      if (incidentAcceptedSubRef.current) websocketService.unsubscribe(incidentAcceptedSubRef.current);
+      if (vehicleSubRef.current) websocketService.unsubscribe(vehicleSubRef.current);
     };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, [showProfileDropdown]);
-
-  const fetchAdmins = async () => {
-    try {
-      const users = await adminAPI.getAllUsers();
-      setAdmins(users.filter(user => user.role === 'ADMINISTRATOR'));
-    } catch (error) {
-      console.error('Error fetching admins:', error);
-
-      // If authentication is required or token is invalid/expired, clear stored auth and redirect
-      const msg = (error && error.message) ? error.message : '';
-      if (msg.includes('Full authentication') || msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('access denied')) {
-        console.warn('[Dashboard] Authentication required - clearing auth state and redirecting to login');
-        localStorage.removeItem('authToken');
-        localStorage.removeItem('user');
-        navigate('/login', { state: { message: 'Session expired or not authorized. Please log in.' } });
-      }
-    }
-  };
-
-  const processIncidents = (data) => {
-    const incidentsList = data.content || data;
-    setIncidents(Array.isArray(incidentsList) ? incidentsList : []);
-  };
+  }, []);
 
   const fetchIncidents = async () => {
     try {
-      const response = await incidentAPI.getAllIncidents();
-      processIncidents(response);
-    } catch (error) {
-      console.error('Error fetching incidents:', error);
-      setIncidents([]); // Set empty array on error
+      const res = await incidentAPI.getAllIncidents();
+      const list = res?.content || res || [];
+      setIncidents(Array.isArray(list) ? list : []);
+    } catch (e) {
+      setIncidents([]);
     }
   };
 
-  const processUnits = (availableVehicles) => {
-    const units = availableVehicles.map(vehicle => ({
-      id: vehicle.vehicleId,
-      type: vehicle.vehicleType || vehicle.type || 'Unknown',
+  const processUnits = (vehicles) => {
+    const units = vehicles.map(v => ({
+      id: v.vehicleId,
+      type: v.vehicleType || v.type || 'Unknown',
+      registrationNumber: v.registrationNumber,
       count: 1,
-      location: vehicle.lastLatitude && vehicle.lastLongitude
-        ? `${vehicle.lastLatitude}, ${vehicle.lastLongitude}`
-        : 'Location not set',
-      status: vehicle.status || 'Active'
+      location: (v.lastLatitude && v.lastLongitude)
+        ? `${Number(v.lastLatitude).toFixed(4)}, ${Number(v.lastLongitude).toFixed(4)}`
+        : 'Location unpinned',
+      status: v.status || 'AVAILABLE'
     }));
     setEmergencyUnits(units);
   };
 
   const fetchUnits = async () => {
     try {
-      const availableVehicles = await vehicleAPI.getVehiclesByStatus('AVAILABLE');
-      processUnits(availableVehicles);
-      setAvailableVehicles(availableVehicles);
-    } catch (error) {
-      console.error('Error fetching units:', error);
+      const avail = await vehicleAPI.getVehiclesByStatus('AVAILABLE');
+      if (Array.isArray(avail)) {
+        processUnits(avail);
+        setAvailableVehicles(avail);
+      }
+    } catch (e) {
       setEmergencyUnits([]);
       setAvailableVehicles([]);
     }
   };
 
-  const parseJwt = (token) => {
+  const fetchAdmins = async () => {
     try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        atob(base64).split('').map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2)).join('')
-      );
-      return JSON.parse(jsonPayload);
-    } catch (error) {
-      return null;
+      const users = await adminAPI.getAllUsers();
+      if (Array.isArray(users)) {
+        setAdmins(users.filter(u => u.role === 'ADMINISTRATOR'));
+      }
+    } catch (e) {
+      const msg = e.message || '';
+      if (msg.includes('401') || msg.includes('403') || msg.toLowerCase().includes('denied')) {
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('user');
+        navigate('/login');
+      }
     }
   };
 
-  const addAdmin = async () => {
-    // Frontend validation
+  const fetchPendingUsers = async () => {
+    try {
+      const pending = await adminAPI.getPendingUsers();
+      if (Array.isArray(pending)) {
+        setPendingUsers(pending);
+      }
+    } catch (e) {
+      setPendingUsers([]);
+    }
+  };
+
+  const addAdmin = async (e) => {
+    e.preventDefault();
     if (!newAdmin.name || newAdmin.name.trim().length < 2) {
-      showError('Name must be at least 2 characters long');
+      showError('Name must be at least 2 characters');
       return;
     }
-
     const emailRegex = /^[A-Za-z0-9+_.-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/;
     if (!newAdmin.email || !emailRegex.test(newAdmin.email)) {
-      showError('Please enter a valid email address');
+      showError('Enter a valid email address');
       return;
     }
-
-    // Password validation
-    if (!newAdmin.password || newAdmin.password.length < 8 || newAdmin.password.length > 20) {
-      showError('Password must be between 8-20 characters long');
-      return;
-    }
-    if (!/[A-Z]/.test(newAdmin.password)) {
-      showError('Password must contain at least one uppercase letter');
-      return;
-    }
-    if (!/[a-z]/.test(newAdmin.password)) {
-      showError('Password must contain at least one lowercase letter');
-      return;
-    }
-    if (!/[0-9]/.test(newAdmin.password)) {
-      showError('Password must contain at least one number');
-      return;
-    }
-    if (!/[!@#$%^&*()_+\-=\[\]{};':.,<>?]/.test(newAdmin.password)) {
-      showError('Password must contain at least one special character (!@#$%^&*)');
+    if (!newAdmin.password || newAdmin.password.length < 8) {
+      showError('Password must be at least 8 characters');
       return;
     }
 
     try {
-      const response = await adminAPI.createAdmin({
+      await adminAPI.createAdmin({
         name: newAdmin.name.trim(),
         email: newAdmin.email.trim().toLowerCase(),
         password: newAdmin.password
       });
-      showSuccess('Admin created successfully!');
+      showSuccess('Administrator created successfully');
       setNewAdmin({ name: '', email: '', password: '' });
       fetchAdmins();
-    } catch (error) {
-      console.error('Error creating admin:', error);
-      showError(error.message || 'Failed to create admin');
+    } catch (e) {
+      showError(e.message || 'Failed to create admin');
     }
   };
 
-
   const removeAdmin = async (adminId) => {
-    const confirmed = await confirm('Are you sure you want to remove this admin? This action cannot be undone.', 'Remove Admin');
-    if (!confirmed) {
-      return;
-    }
+    const ok = await confirm('Are you sure you want to demote/remove this administrator?');
+    if (!ok) return;
 
     try {
       await adminAPI.demoteAdmin(adminId);
-      showSuccess('Admin removed successfully!');
+      showSuccess('Administrator removed successfully');
       fetchAdmins();
-    } catch (error) {
-      console.error('Error removing admin:', error);
-      showError(error.message || 'Failed to remove admin');
+    } catch (e) {
+      showError(e.message || 'Failed to remove admin');
     }
   };
 
   const startSimulation = async () => {
-      await addIncidents();
-      await addVehicles();
-      await automationAPI.setAutomation(true);
-  }
+    const incCount = parseInt(numberOfIncidents) || 0;
+    const vehCount = parseInt(numberOfVehicles) || 0;
 
-  const addIncidents = async () => {
-    if (numberOfIncidents <= 0) {
-      showError('Please enter a valid number of incidents to add');
+    if (incCount <= 0 && vehCount <= 0) {
+      showWarning('Please enter a count for simulated incidents or vehicles.');
       return;
     }
+
     try {
-      await jmeterAPI.createJmeterIncidents(numberOfIncidents);
-      showSuccess(`${numberOfIncidents} incidents added successfully!`);
-      setNumberOfIncidents(0);
-    } catch (error) {
-      console.error('Error adding incidents:', error);
-      showError(error.message || 'Failed to add incidents');
+      if (incCount > 0) {
+        await jmeterAPI.createJmeterIncidents(incCount);
+      }
+      if (vehCount > 0) {
+        await jmeterAPI.createJmeterVehicles(vehCount);
+      }
+      await automationAPI.setAutomation(true);
+      showSuccess(`Simulation started! (${incCount} incidents, ${vehCount} vehicles)`);
+      setNumberOfIncidents('');
+      setNumberOfVehicles('');
+      setTimeout(() => fetchData(), 2000);
+    } catch (e) {
+      showError(e.message || 'Simulation error');
     }
   };
 
-    const addVehicles = async () => {
-        if (numberOfVehicles <= 0) {
-            showError('Please enter a valid number of vehicles to add');
-            return;
-        }
-        try {
-            await jmeterAPI.createJmeterVehicles(numberOfVehicles);
-            showSuccess(`${numberOfVehicles} vehicles added successfully!`);
-            setNumberOfIncidents(0);
-        } catch (error) {
-            console.error('Error adding vehicles:', error);
-            showError(error.message || 'Failed to add vehicles');
-        }
-    };
-
   const addUnit = async () => {
-    if (!newUnit.type || newUnit.count <= 0) {
-      showError('Please fill in all fields with valid values');
+    const count = parseInt(newUnit.count) || 1;
+    if (count <= 0) {
+      showWarning('Count must be at least 1');
       return;
     }
 
     try {
-      for (let i = 0; i < newUnit.count; i++) {
+      for (let i = 0; i < count; i++) {
         const vehicleData = {
           vehicleType: newUnit.type,
-          registrationNumber: `UNIT-${Math.floor(Math.random() * 100000)}`,
+          registrationNumber: `UNIT-${Math.floor(10000 + Math.random() * 90000)}`,
           status: 'AVAILABLE',
           capacity: 4,
           lastLatitude: parseFloat(newUnit.latitude.toFixed(6)),
           lastLongitude: parseFloat(newUnit.longitude.toFixed(6))
         };
 
-        const createdVehicle = await vehicleAPI.createVehicle(vehicleData);
-
-        // Initialize vehicle location in Redis
-        if (createdVehicle.vehicleId) {
+        const created = await vehicleAPI.createVehicle(vehicleData);
+        if (created?.vehicleId) {
           try {
-            const redisResponse = await fetch(`http://localhost:8080/test/vehicle-location/update/${createdVehicle.vehicleId}`, {
+            await fetch(`http://localhost:8080/test/vehicle-location/update/${created.vehicleId}`, {
               method: 'POST',
               headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
               body: `latitude=${vehicleData.lastLatitude}&longitude=${vehicleData.lastLongitude}`
             });
-
-            if (redisResponse.ok) {
-              console.log(`Vehicle ${createdVehicle.vehicleId} added to Redis successfully`);
-            } else {
-              console.error(`Failed to add vehicle ${createdVehicle.vehicleId} to Redis:`, await redisResponse.text());
-            }
-          } catch (redisError) {
-            console.error(`Redis error for vehicle ${createdVehicle.vehicleId}:`, redisError);
-          }
+          } catch (err) {}
         }
       }
 
-      showSuccess('Units created successfully!');
-
-      // Force initialize all vehicles in Redis after creation
-      try {
-        const response = await fetch('http://localhost:8080/test/vehicle-location/init-all-vehicles', {
-          method: 'POST'
-        });
-        const result = await response.json();
-        console.log('Redis initialization result:', result.message);
-      } catch (error) {
-        console.error('Failed to initialize vehicles in Redis:', error);
-      }
-
-      setNewUnit({ type: 'AMBULANCE', count: 0, latitude: 30.0444, longitude: 31.2357 });
+      showSuccess(`Successfully deployed ${count} ${newUnit.type} unit(s)!`);
+      fetch(`http://localhost:8080/test/vehicle-location/init-all-vehicles`, { method: 'POST' }).catch(() => {});
+      setNewUnit({ type: 'AMBULANCE', count: 1, latitude: 30.0444, longitude: 31.2357 });
       fetchUnits();
-    } catch (error) {
-      console.error('Error adding unit:', error);
-      showError(error.message || 'Failed to create unit');
+    } catch (e) {
+      showError(e.message || 'Failed to create unit');
     }
   };
 
   const removeUnit = async (id) => {
+    const ok = await confirm('Are you sure you want to decommission this vehicle unit?');
+    if (!ok) return;
+
     try {
-      const response = await fetch(`http://localhost:8080/test/vehicle-location/delete/${id}`, {
+      const res = await fetch(`http://localhost:8080/test/vehicle-location/delete/${id}`, {
         method: 'DELETE'
       });
-      const result = await response.json();
-
-      if (response.ok) {
-        showSuccess('Unit removed successfully!');
+      if (res.ok) {
+        showSuccess('Unit decommissioned successfully');
         fetchUnits();
       } else {
-        showError('Failed to remove unit: ' + result.error);
+        showError('Failed to remove unit');
       }
-    } catch (error) {
-      console.error('Error removing unit:', error);
-      showError('Failed to remove unit');
+    } catch (e) {
+      showError('Error removing vehicle unit');
     }
   };
 
   const updateIncidentStatus = async (id, status) => {
     try {
       await incidentAPI.updateStatus(id, status);
-      // Force refresh incidents immediately
-      await fetchIncidents();
-    } catch (error) {
-      console.error('Error updating incident status:', error);
-      showError('Failed to update incident status: ' + error.message);
+      showSuccess(`Incident #${id} status updated to ${status}`);
+      fetchIncidents();
+    } catch (e) {
+      showError('Failed to update status: ' + e.message);
     }
   };
 
-  const fetchPendingUsers = async () => {
+  const handleAssignVehicle = (incident) => {
+    setSelectedIncident(incident);
+    setShowAssignModal(true);
+  };
+
+  const assignVehicleToIncident = async (vehicleId) => {
+    if (!selectedIncident) return;
     try {
-      const response = await adminAPI.getPendingUsers();
-      setPendingUsers(response);
-    } catch (error) {
-      console.error('Error fetching pending users:', error);
-      setPendingUsers([]);
+      await assignmentAPI.createAssignment({
+        incidentId: selectedIncident.incidentId,
+        vehicleId: vehicleId,
+        assignedByUserId: userInfo?.userId || 1
+      });
+      showSuccess(`Vehicle assigned to incident #${selectedIncident.incidentId}!`);
+      setShowAssignModal(false);
+      setSelectedIncident(null);
+      fetchIncidents();
+      fetchUnits();
+    } catch (e) {
+      showError(e.message || 'Failed to assign vehicle');
     }
   };
 
   const approveUser = async (userId) => {
     try {
       await adminAPI.approveUser(userId);
-      showSuccess('User approved successfully!');
+      showSuccess('User approved successfully');
       fetchPendingUsers();
-      fetchAdmins(); // Refresh admin list to show newly approved user
-    } catch (error) {
-      console.error('Error approving user:', error);
-      showError('Failed to approve user: ' + error.message);
+      fetchAdmins();
+    } catch (e) {
+      showError('Failed to approve: ' + e.message);
     }
   };
 
   const rejectUser = async (userId) => {
+    const ok = await confirm('Reject and discard this user registration request?');
+    if (!ok) return;
     try {
       await adminAPI.rejectUser(userId);
-      showSuccess('User rejected successfully!');
+      showSuccess('User registration rejected');
       fetchPendingUsers();
-    } catch (error) {
-      console.error('Error rejecting user:', error);
-      showError('Failed to reject user: ' + error.message);
+    } catch (e) {
+      showError('Failed to reject: ' + e.message);
     }
   };
 
@@ -432,544 +390,553 @@ const Dashboard = () => {
     return 'Low';
   };
 
-  const handleAssignVehicle = (incident) => {
-    setSelectedIncident(incident);
-    setShowAssignModal(true);
-  };
-
-  const assignVehicleToIncident = async (vehicleId) => {
-    try {
-      await assignmentAPI.createAssignment({
-        incidentId: selectedIncident.incidentId,
-        vehicleId: vehicleId,
-        assignedByUserId: userInfo?.userId || 1
-      });
-      showSuccess('Vehicle assigned successfully!');
-      setShowAssignModal(false);
-      setSelectedIncident(null);
-      fetchIncidents();
-      fetchUnits();
-    } catch (error) {
-      console.error('Error assigning vehicle:', error);
-      showError('Failed to assign vehicle: ' + error.message);
-    }
-  };
-
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4">
-          <div className="flex justify-between items-center py-4">
-            <h1 className="text-2xl font-bold text-gray-800">Admin Dashboard</h1>
-            <div className="flex items-center space-x-6">
-              <Notification />
-              <div className="relative profile-dropdown">
-                <button
-                  onClick={() => setShowProfileDropdown(!showProfileDropdown)}
-                  className="flex items-center space-x-2 p-2 rounded-full hover:bg-gray-100 transition-colors"
-                >
-                  <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold">
-                    {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() :
-                     userInfo?.email ? userInfo.email.charAt(0).toUpperCase() :
-                     userInfo?.sub ? userInfo.sub.charAt(0).toUpperCase() : 'U'}
-                  </div>
-                  <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-                  </svg>
-                </button>
+    <div className="min-h-screen bg-[#F8EDE3] text-[#283227] flex flex-col">
+      <Navbar />
 
-                {showProfileDropdown && (
-                  <div className="absolute right-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
-                    <div className="p-4 border-b border-gray-200">
-                      <div className="flex items-center space-x-3">
-                        <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center text-white font-semibold text-lg">
-                          {userInfo?.name ? userInfo.name.charAt(0).toUpperCase() :
-                           userInfo?.email ? userInfo.email.charAt(0).toUpperCase() :
-                           userInfo?.sub ? userInfo.sub.charAt(0).toUpperCase() : 'U'}
+      <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+        {/* Navigation Tabs */}
+        <div className="flex items-center gap-2 border-b border-[#BDD2B6] overflow-x-auto pb-1">
+          {[
+            { id: 'incidents', label: 'Reported Incidents', icon: Flame, count: incidents.length },
+            { id: 'units', label: 'Emergency Fleet', icon: Car, count: emergencyUnits.length },
+            { id: 'admins', label: 'Command Staff', icon: Shield, count: admins.length },
+          ].map((tab) => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-2 px-4 py-3 text-xs font-bold rounded-t-xl transition-all border-b-2 whitespace-nowrap ${
+                  active
+                    ? 'border-[#798777] text-[#283227] bg-white shadow-sm'
+                    : 'border-transparent text-[#5B6859] hover:text-[#283227] hover:bg-white/50'
+                }`}
+              >
+                <Icon className="w-4 h-4" />
+                <span>{tab.label}</span>
+                {tab.count !== undefined && (
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-mono ${
+                    active ? 'bg-[#BDD2B6]/50 text-[#283227] border border-[#A2B29F]' : 'bg-[#FAF5EF] text-[#5B6859] border border-[#BDD2B6]'
+                  }`}>
+                    {tab.count}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* TAB 1: INCIDENTS & MAP */}
+        {activeTab === 'incidents' && (
+          <div className="space-y-6">
+            {/* Simulation Controller Bar */}
+            <div className="p-5 rounded-2xl bg-white border border-[#BDD2B6] shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Zap className="w-4 h-4 text-[#798777]" />
+                <h3 className="font-bold text-sm text-[#283227]">Emergency Dispatch Simulation Engine</h3>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Simulate Incidents (Count)"
+                  value={numberOfIncidents}
+                  onChange={(e) => setNumberOfIncidents(e.target.value)}
+                  className="h-11 px-4 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] text-xs focus:outline-none focus:border-[#798777] font-mono"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  placeholder="Simulate Vehicles (Count)"
+                  value={numberOfVehicles}
+                  onChange={(e) => setNumberOfVehicles(e.target.value)}
+                  className="h-11 px-4 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] text-xs focus:outline-none focus:border-[#798777] font-mono"
+                />
+                <button
+                  onClick={startSimulation}
+                  className="h-11 rounded-xl bg-[#798777] hover:bg-[#687566] text-white font-bold text-xs flex items-center justify-center gap-2 shadow-md shadow-[#798777]/25 transition-all"
+                >
+                  <Play className="w-3.5 h-3.5 fill-current" />
+                  Launch Live Simulation
+                </button>
+              </div>
+            </div>
+
+            {/* Incidents List */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-lg font-bold text-[#283227]">Reported Emergency Calls</h2>
+                  <p className="text-xs text-[#5B6859]">Manage triage and assign emergency vehicle dispatch</p>
+                </div>
+                <button
+                  onClick={fetchIncidents}
+                  className="p-2 rounded-xl text-[#5B6859] hover:text-[#283227] hover:bg-[#F8EDE3] transition-colors"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                </button>
+              </div>
+
+              {incidents.length === 0 ? (
+                <div className="py-12 text-center text-[#798777] text-sm bg-white rounded-2xl border border-[#BDD2B6]">
+                  No emergency incidents reported
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {incidents.map((incident) => {
+                    const priority = getPriorityLabel(incident.severityLevel);
+                    return (
+                      <div
+                        key={incident.incidentId}
+                        className="p-5 rounded-2xl bg-white border border-[#BDD2B6] hover:border-[#A2B29F] shadow-sm space-y-3 flex flex-col justify-between transition-all"
+                      >
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="font-extrabold text-sm text-[#283227]">
+                              {incident.incidentType} #{incident.incidentId}
+                            </span>
+                            <span className={`px-2.5 py-0.5 rounded-md text-[11px] font-bold ${
+                              priority === 'Critical' ? 'bg-rose-100 text-rose-800 border border-rose-300' :
+                              priority === 'High' ? 'bg-amber-100 text-amber-800 border border-amber-300' :
+                              'bg-[#BDD2B6]/40 text-[#283227] border border-[#BDD2B6]'
+                            }`}>
+                              {priority}
+                            </span>
+                          </div>
+
+                          <div className="text-xs text-[#5B6859] space-y-1">
+                            <p className="flex items-start gap-1.5">
+                              <MapPin className="w-3.5 h-3.5 text-[#798777] flex-shrink-0 mt-0.5" />
+                              <span className="line-clamp-2 text-[#283227] font-medium">
+                                {incident.address?.street || 'Location not specified'}
+                                {incident.address?.latitude && incident.address?.longitude &&
+                                  ` (${incident.address.latitude.toFixed(4)}, ${incident.address.longitude.toFixed(4)})`
+                                }
+                              </span>
+                            </p>
+                            <p className="text-[#5B6859] line-clamp-2">
+                              {incident.description || 'No description provided'}
+                            </p>
+                            <p className="text-[10px] text-[#798777] font-mono">
+                              Reported: {incident.timeReported ? new Date(incident.timeReported).toLocaleTimeString() : 'N/A'}
+                            </p>
+                          </div>
                         </div>
-                        <div>
-                          <p className="font-semibold text-gray-800">{userInfo?.name || userInfo?.sub || 'User'}</p>
-                          <p className="text-sm text-gray-600">{userInfo?.email || userInfo?.username || 'No email'}</p>
+
+                        <div className="pt-3 border-t border-[#BDD2B6]/50 flex items-center justify-between gap-2">
+                          <select
+                            value={incident.lifeCycleStatus}
+                            onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
+                            className="text-xs font-semibold rounded-xl bg-[#F8EDE3]/50 border border-[#BDD2B6] text-[#283227] px-2.5 py-1.5 focus:outline-none focus:border-[#798777]"
+                          >
+                            <option value="REPORTED">REPORTED</option>
+                            <option value="ASSIGNED">ASSIGNED</option>
+                            <option value="RESOLVED">RESOLVED</option>
+                          </select>
+
+                          <div className="flex items-center gap-1.5">
+                            {incident.lifeCycleStatus === 'REPORTED' && (
+                              <button
+                                onClick={() => handleAssignVehicle(incident)}
+                                className="px-3 py-1.5 rounded-xl bg-[#798777] hover:bg-[#687566] text-white text-xs font-bold transition-all shadow-sm shadow-[#798777]/20"
+                              >
+                                Assign Unit
+                              </button>
+                            )}
+
+                            <button
+                              onClick={async () => {
+                                const ok = await confirm(`Delete emergency incident #${incident.incidentId}?`);
+                                if (ok) {
+                                  try {
+                                    await incidentAPI.deleteIncident(incident.incidentId);
+                                    showSuccess('Incident deleted');
+                                    fetchIncidents();
+                                  } catch (e) {
+                                    showError('Failed to delete incident');
+                                  }
+                                }
+                              }}
+                              className="p-1.5 text-[#798777] hover:text-rose-700 rounded-xl hover:bg-rose-50 transition-colors"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                    <div className="p-2">
-                      <button
-                        onClick={() => {
-                          localStorage.clear();
-                          navigate('/login');
-                        }}
-                        className="w-full text-left px-3 py-2 text-red-600 hover:bg-red-50 rounded flex items-center space-x-2"
-                      >
-                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
-                        </svg>
-                        <span>Logout</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-            </div>
-          </div>
-        </div>
-          <nav className="flex space-x-8">
-            {['incidents', 'admins', 'pending', 'units', 'analytics'].map(tab => (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm capitalize ${activeTab === tab
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
-                  }`}
-              >
-                {tab === 'units' ? 'Emergency Units' : tab === 'pending' ? 'Pending Users' : tab === 'reporters' ? 'Reporters' : tab}
-              </button>
-            ))}
-          </nav>
-      </div>
-
-      <div className="max-w-7xl mx-auto px-4 py-6">
-        {activeTab === 'incidents' && (
-          <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-xl font-semibold mb-4">Simulation</h2>
-              <div className="mb-6 p-4 bg-gray-50 rounded">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-                <div>
-                  <input
-                    type="number"
-                    placeholder="Number of Incidents"
-                    min={0}
-                    value={numberOfIncidents}
-                    onChange={(e) => setNumberOfIncidents(e.target.value)}
-                    className="border rounded px-3 py-2 w-full"
-                    required
-                  />
-                </div>
-                  <div>
-                      <input
-                          type="number"
-                          placeholder="Number of Vehicles"
-                          min={0}
-                          value={numberOfVehicles}
-                          onChange={(e) => setNumberOfVehicles(e.target.value)}
-                          className="border rounded px-3 py-2 w-full"
-                          required
-                      />
-                  </div>
-                <button onClick={startSimulation} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  Start Simulation
-                </button>
-              </div>
-            </div>
-            <h2 className="text-xl font-semibold mb-4">Reported Incidents</h2>
-            <div className="emergency-item-container">
-              {incidents.map(incident => (
-                <div key={incident.incidentId} className="emergency-item">
-                  <div className="emergency-header">
-                    <h3>{incident.incidentType}</h3>
-                    <span className="emergency-state">{getPriorityLabel(incident.severityLevel)}</span>
-                  </div>
-                  <p>
-                    <strong>Location:</strong> {incident.address?.street || 'Location not specified'}
-                    {incident.address?.latitude && incident.address?.longitude &&
-                      ` (${incident.address.latitude}, ${incident.address.longitude})`
-                    }
-                  </p>
-                  <p><strong>Description:</strong> {incident.description || 'No description provided'}</p>
-                  <p><strong>Reported:</strong> {new Date(incident.timeReported).toLocaleString()}</p>
-                  <div className="mt-3 space-y-2">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700 mr-2">Status:</label>
-                      <select
-                        value={incident.lifeCycleStatus}
-                        onChange={(e) => updateIncidentStatus(incident.incidentId, e.target.value)}
-                        className={`border rounded px-3 py-1 pr-8 text-sm ${incident.lifeCycleStatus === 'RESOLVED' ? 'bg-green-50 border-green-300' :
-                          incident.lifeCycleStatus === 'ASSIGNED' ? 'bg-blue-50 border-blue-300' :
-                            incident.lifeCycleStatus === 'CANCELLED' ? 'bg-red-50 border-red-300' :
-                              'bg-gray-50 border-gray-300'
-                          }`}
-                      >
-                        <option value="REPORTED">Reported</option>
-                        <option value="ASSIGNED">Assigned</option>
-                        <option value="RESOLVED">Resolved</option>
-                        {/* <option value="CANCELLED">Cancelled</option> */}
-                      </select>
-                    </div>
-                    {incident.lifeCycleStatus === 'REPORTED' && (
-                      <button
-                        onClick={() => handleAssignVehicle(incident)}
-                        className="bg-blue-600 text-white px-3 py-1 rounded text-sm hover:bg-blue-700 mr-2"
-                      >
-                        Assign Vehicle
-                      </button>
-                    )}
-                    <button
-                      onClick={async () => {
-                        const confirmed = await confirm('Are you sure you want to delete this incident?', 'Delete Incident');
-                        if (confirmed) {
-                          try {
-                            await incidentAPI.deleteIncident(incident.incidentId);
-                            showSuccess('Incident deleted successfully');
-                            fetchIncidents();
-                          } catch (error) {
-                            showError('Failed to delete incident');
-                          }
-                        }
-                      }}
-                      className="bg-red-600 text-white px-3 py-1 rounded text-sm hover:bg-red-700"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-            {incidents.length === 0 && (
-              <div className="text-center py-8 text-gray-500">
-                No incidents reported
-              </div>
-            )}
-            <div className="mt-6">
-              <MapPage />
-            </div>
-          </div>
-        )
-
-        }
-
-        {/* {activeTab === 'dispatch' && <DispatcherPage />} */}
-
-        {activeTab === 'pending' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Pending User Registrations</h2>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Registered</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {pendingUsers.map(user => (
-                    <tr key={user.userId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{user.fullName}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{user.phone}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                        {new Date(user.createdAt).toLocaleDateString()}
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button
-                          onClick={() => approveUser(user.userId)}
-                          className="bg-green-600 text-white px-3 py-1 rounded hover:bg-green-700"
-                        >
-                          Approve
-                        </button>
-                        <button
-                          onClick={() => rejectUser(user.userId)}
-                          className="bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700"
-                        >
-                          Reject
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              {pendingUsers.length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  No pending user registrations
+                    );
+                  })}
                 </div>
               )}
             </div>
-          </div>
-        )}
 
-        {activeTab === 'admins' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Admin Management</h2>
-            <div className="mb-6 p-4 bg-gray-50 rounded">
-              <h3 className="font-medium mb-3">Add New Admin</h3>
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+            {/* Embedded Live Map */}
+            <div className="space-y-2 pt-4">
+              <div className="flex items-center justify-between">
                 <div>
-                  <input
-                    type="text"
-                    placeholder="Full Name"
-                    value={newAdmin.name}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
-                    className="border rounded px-3 py-2 w-full"
-                    required
-                  />
+                  <h2 className="text-lg font-bold text-[#283227]">Live Emergency Tactical Map</h2>
+                  <p className="text-xs text-[#5B6859]">Real-time vehicle telemetry via Redis and active routing lines</p>
                 </div>
-                <div>
-                  <input
-                    type="email"
-                    placeholder="Email Address"
-                    value={newAdmin.email}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
-                    className="border rounded px-3 py-2 w-full"
-                    required
-                  />
-                </div>
-                <div>
-                  <input
-                    type="password"
-                    placeholder="Password"
-                    value={newAdmin.password}
-                    onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
-                    className="border rounded px-3 py-2 w-full"
-                    required
-                  />
-                </div>
-                <button onClick={addAdmin} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  Add Admin
-                </button>
               </div>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {admins.map(admin => (
-                    <tr key={admin.userId}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{admin.fullName || admin.name}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{admin.email}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{admin.role}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        {admin.email !== 'admin@emergency.gov' && admin.email !== userInfo?.sub && (
-                          <button
-                            onClick={() => removeAdmin(admin.userId)}
-                            className="text-red-600 hover:text-red-900"
-                          >
-                            Remove
-                          </button>
-                        )}
-                        {admin.email === userInfo?.sub && admin.email !== 'admin@emergency.gov' && (
-                          <span className="text-gray-400 text-sm">Current User</span>
-                        )}
-                        {admin.email === 'admin@emergency.gov' && (
-                          <span className="text-gray-400 text-sm">System Admin</span>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <MapPage />
             </div>
           </div>
         )}
 
+        {/* TAB 2: EMERGENCY FLEET UNITS */}
         {activeTab === 'units' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-xl font-semibold mb-4">Emergency Units Management</h2>
-            <div className="mb-6 p-4 bg-gray-50 rounded">
-              <h3 className="font-medium mb-3">Add New Unit</h3>
-              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-                <select
-                  value={newUnit.type}
-                  onChange={(e) => setNewUnit({ ...newUnit, type: e.target.value })}
-                  className="border rounded px-3 py-2"
-                  required
-                >
-                  <option value="AMBULANCE">Ambulance</option>
-                  <option value="FIRE_TRUCK">Fire Truck</option>
-                  <option value="POLICE_CAR">Police Car</option>
-                </select>
-                <input
-                  type="number"
-                  placeholder="Count"
-                  value={newUnit.count}
-                  onChange={(e) => setNewUnit({ ...newUnit, count: parseInt(e.target.value) || 0 })}
-                  className="border rounded px-3 py-2"
-                  min="1"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowLocationPicker(true)}
-                  className="bg-gray-600 text-white px-4 py-2 rounded hover:bg-gray-700"
-                >
-                  Pick Location
-                </button>
-                <div className="text-sm text-gray-600">
-                  Selected: Lat: {newUnit.latitude.toFixed(6)}, Lng: {newUnit.longitude.toFixed(6)}
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-white border border-[#BDD2B6] shadow-sm space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Car className="w-5 h-5 text-[#798777]" />
+                  <h3 className="font-bold text-sm text-[#283227]">Deploy Emergency Fleet Units</h3>
                 </div>
-                <button onClick={addUnit} className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                  Add Unit
-                </button>
-              </div>
-              <div className="mt-2">
                 <button
                   onClick={async () => {
                     try {
-                      const response = await fetch('http://localhost:8080/test/vehicle-location/init-all-vehicles', {
-                        method: 'POST'
-                      });
-                      const result = await response.json();
-                      showSuccess(result.message);
-                    } catch (error) {
-                      showError('Failed to initialize vehicles in Redis');
+                      const res = await fetch('http://localhost:8080/test/vehicle-location/init-all-vehicles', { method: 'POST' });
+                      const r = await res.json();
+                      showSuccess(r.message || 'All vehicles loaded to Redis map');
+                    } catch (e) {
+                      showError('Failed to initialize Redis');
                     }
                   }}
-                  className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
+                  className="px-3.5 py-1.5 rounded-xl bg-[#BDD2B6] hover:bg-[#A2B29F] text-[#283227] text-xs font-bold shadow-sm transition-all"
                 >
-                  Load All Vehicles to Map
+                  Sync Fleet to Map
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3">
+                <select
+                  value={newUnit.type}
+                  onChange={(e) => setNewUnit({ ...newUnit, type: e.target.value })}
+                  className="h-11 px-3.5 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] text-xs font-semibold focus:outline-none focus:border-[#798777]"
+                >
+                  <option value="AMBULANCE">Ambulance (Medical)</option>
+                  <option value="FIRE_TRUCK">Fire Truck (Fire/Rescue)</option>
+                  <option value="POLICE_CAR">Police Car (Security)</option>
+                </select>
+
+                <input
+                  type="number"
+                  min="1"
+                  placeholder="Unit Count"
+                  value={newUnit.count}
+                  onChange={(e) => setNewUnit({ ...newUnit, count: parseInt(e.target.value) || 1 })}
+                  className="h-11 px-3.5 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] text-xs font-mono focus:outline-none focus:border-[#798777]"
+                />
+
+                <button
+                  type="button"
+                  onClick={() => setShowLocationPicker(true)}
+                  className="h-11 px-3.5 rounded-xl bg-[#F8EDE3] hover:bg-[#FAF5EF] border border-[#BDD2B6] text-xs font-semibold text-[#283227] flex items-center justify-center gap-1.5 transition-colors"
+                >
+                  <MapPin className="w-3.5 h-3.5 text-[#798777]" />
+                  Pick Coordinates
+                </button>
+
+                <div className="h-11 flex items-center px-3 rounded-xl bg-[#FAF5EF] border border-[#BDD2B6] text-xs text-[#5B6859] font-mono truncate">
+                  {newUnit.latitude.toFixed(4)}, {newUnit.longitude.toFixed(4)}
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addUnit}
+                  className="h-11 rounded-xl bg-[#798777] hover:bg-[#687566] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#798777]/25 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Deploy Unit(s)
                 </button>
               </div>
             </div>
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200">
-                <thead className="bg-gray-50">
-                  <tr>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Count</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white divide-y divide-gray-200">
-                  {emergencyUnits.map(unit => (
-                    <tr key={unit.id}>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{unit.type}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{unit.count}</td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{unit.location}</td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <span className="px-2 py-1 text-xs rounded-full bg-green-100 text-green-800">{unit.status || 'Active'}</span>
-                      </td>
-                      <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                        <button
-                          onClick={() => removeUnit(unit.id)}
-                          className="text-red-600 hover:text-red-900"
-                        >
-                          Remove
-                        </button>
-                      </td>
+
+            {/* Units Table */}
+            <div className="bg-white rounded-2xl border border-[#BDD2B6] shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-[#BDD2B6] flex items-center justify-between">
+                <span className="font-bold text-sm text-[#283227]">Active Emergency Vehicles</span>
+                <span className="text-xs text-[#5B6859] font-mono">{emergencyUnits.length} total units</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-[#BDD2B6]/40 text-left text-xs">
+                  <thead className="bg-[#F8EDE3]/70 text-[#5B6859] uppercase font-bold">
+                    <tr>
+                      <th className="py-3 px-4">Call Sign</th>
+                      <th className="py-3 px-4">Classification</th>
+                      <th className="py-3 px-4">Coordinates</th>
+                      <th className="py-3 px-4">Status</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-[#BDD2B6]/40 font-medium text-[#283227]">
+                    {emergencyUnits.length === 0 ? (
+                      <tr>
+                        <td colSpan="5" className="py-8 text-center text-[#798777]">No active vehicle units found</td>
+                      </tr>
+                    ) : (
+                      emergencyUnits.map((unit) => (
+                        <tr key={unit.id} className="hover:bg-[#F8EDE3]/30 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-[#283227]">
+                            {unit.registrationNumber || `Unit #${unit.id}`}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={`px-2.5 py-1 rounded-md text-[11px] font-semibold ${
+                              unit.type === 'POLICE_CAR' ? 'bg-[#798777]/20 text-[#283227] border border-[#798777]/40' :
+                              unit.type === 'FIRE_TRUCK' ? 'bg-amber-100 text-amber-900 border border-amber-300' :
+                              'bg-[#BDD2B6]/40 text-[#283227] border border-[#BDD2B6]'
+                            }`}>
+                              {unit.type}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-[#5B6859]">{unit.location}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-[#BDD2B6]/50 text-[#283227] border border-[#A2B29F]">
+                              {unit.status}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <button
+                              onClick={() => removeUnit(unit.id)}
+                              className="text-rose-700 hover:text-rose-900 text-xs font-semibold transition-colors"
+                            >
+                              Decommission
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
         )}
 
-        {activeTab === 'analytics' && (
-          <div className="bg-white rounded-lg shadow p-6">
-            <AnalyticsPage />
+        {/* TAB 3: ADMIN MANAGEMENT */}
+        {activeTab === 'admins' && (
+          <div className="space-y-6">
+            <div className="p-6 rounded-2xl bg-white border border-[#BDD2B6] shadow-sm space-y-4">
+              <div className="flex items-center gap-2">
+                <Shield className="w-5 h-5 text-[#798777]" />
+                <h3 className="font-bold text-sm text-[#283227]">Commission New Administrator</h3>
+              </div>
+              <form onSubmit={addAdmin} className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <input
+                  type="text"
+                  placeholder="Full Name"
+                  value={newAdmin.name}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, name: e.target.value })}
+                  required
+                  className="h-11 px-4 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] text-xs focus:outline-none focus:border-[#798777]"
+                />
+                <input
+                  type="email"
+                  placeholder="Official Email"
+                  value={newAdmin.email}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, email: e.target.value })}
+                  required
+                  className="h-11 px-4 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] text-xs focus:outline-none focus:border-[#798777]"
+                />
+                <input
+                  type="password"
+                  placeholder="Temporary Password (8+ chars)"
+                  value={newAdmin.password}
+                  onChange={(e) => setNewAdmin({ ...newAdmin, password: e.target.value })}
+                  required
+                  className="h-11 px-4 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] text-xs font-mono focus:outline-none focus:border-[#798777]"
+                />
+                <button
+                  type="submit"
+                  className="h-11 rounded-xl bg-[#798777] hover:bg-[#687566] text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md shadow-[#798777]/25 transition-all"
+                >
+                  <Plus className="w-4 h-4" />
+                  Grant Admin Role
+                </button>
+              </form>
+            </div>
+
+            <div className="bg-white rounded-2xl border border-[#BDD2B6] shadow-sm overflow-hidden">
+              <div className="p-4 border-b border-[#BDD2B6]">
+                <span className="font-bold text-sm text-[#283227]">Active System Administrators</span>
+              </div>
+              <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-[#BDD2B6]/40 text-left text-xs">
+                  <thead className="bg-[#F8EDE3]/70 text-[#5B6859] uppercase font-bold">
+                    <tr>
+                      <th className="py-3 px-4">Name</th>
+                      <th className="py-3 px-4">Email Address</th>
+                      <th className="py-3 px-4">Role</th>
+                      <th className="py-3 px-4 text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-[#BDD2B6]/40 font-medium text-[#283227]">
+                    {admins.map((admin) => {
+                      const isMe = admin.email === userInfo?.sub || admin.email === userInfo?.email;
+                      const isRoot = admin.email === 'admin@emergency.gov';
+                      return (
+                        <tr key={admin.userId} className="hover:bg-[#F8EDE3]/30 transition-colors">
+                          <td className="py-3.5 px-4 font-bold text-[#283227]">
+                            {admin.fullName || admin.name}
+                          </td>
+                          <td className="py-3.5 px-4 font-mono text-[#5B6859]">{admin.email}</td>
+                          <td className="py-3.5 px-4">
+                            <span className="px-2.5 py-1 rounded-md text-[10px] font-bold bg-[#BDD2B6]/40 text-[#283227] border border-[#A2B29F]">
+                              {admin.role}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            {isRoot ? (
+                              <span className="text-[#798777] text-xs">Root Administrator</span>
+                            ) : isMe ? (
+                              <span className="text-[#5B6859] text-xs font-semibold">Active Session</span>
+                            ) : (
+                              <button
+                                onClick={() => removeAdmin(admin.userId)}
+                                className="text-rose-700 hover:text-rose-900 text-xs font-semibold transition-colors"
+                              >
+                                Revoke Access
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </div>
           </div>
         )}
-      </div>
+      </main>
 
-      {/* Assignment Modal */}
+      {/* MODAL: ASSIGN VEHICLE TO INCIDENT */}
       {showAssignModal && selectedIncident && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-96 max-h-96 overflow-y-auto">
-            <h3 className="text-lg font-semibold mb-4">
-              Assign Vehicle to {selectedIncident.incidentType} Incident
-            </h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Location: {selectedIncident.address?.latitude && selectedIncident.address?.longitude
-                ? `${selectedIncident.address.latitude}, ${selectedIncident.address.longitude}`
-                : 'Location not specified'}
-            </p>
-            <div className="space-y-2 mb-4">
-              <h4 className="font-medium">Available Vehicles:</h4>
-              {(() => {
-                // Filter vehicles by incident type
-                const incidentType = selectedIncident.incidentType?.toLowerCase();
-                let filteredVehicles = availableVehicles;
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1A2119]/50 backdrop-blur-sm">
+          <div className="bg-white border border-[#BDD2B6] rounded-3xl p-6 max-w-lg w-full shadow-2xl space-y-5 animate-scaleIn">
+            <div className="flex items-center justify-between border-b border-[#BDD2B6] pb-4">
+              <div>
+                <h3 className="font-bold text-base text-[#283227]">
+                  Assign Unit to Incident #{selectedIncident.incidentId}
+                </h3>
+                <p className="text-xs text-[#5B6859] mt-0.5">
+                  Type: {selectedIncident.incidentType} &bull; Priority: {getPriorityLabel(selectedIncident.severityLevel)}
+                </p>
+              </div>
+              <button
+                onClick={() => { setShowAssignModal(false); setSelectedIncident(null); }}
+                className="p-1.5 rounded-xl text-[#5B6859] hover:text-[#283227] hover:bg-[#F8EDE3] transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
 
-                if (incidentType?.includes('police')) {
-                  filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'POLICE_CAR');
-                } else if (incidentType?.includes('fire')) {
-                  filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'FIRE_TRUCK');
-                } else if (incidentType?.includes('medical') || incidentType?.includes('ambulance')) {
-                  filteredVehicles = availableVehicles.filter(v => v.vehicleType === 'AMBULANCE');
+            <div className="space-y-3">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#5B6859]">
+                Available Compatible Fleet:
+              </span>
+
+              {(() => {
+                const incType = (selectedIncident.incidentType || '').toLowerCase();
+                let filtered = availableVehicles;
+                if (incType.includes('police')) {
+                  filtered = availableVehicles.filter(v => v.vehicleType === 'POLICE_CAR');
+                } else if (incType.includes('fire')) {
+                  filtered = availableVehicles.filter(v => v.vehicleType === 'FIRE_TRUCK');
+                } else if (incType.includes('medical') || incType.includes('ambulance')) {
+                  filtered = availableVehicles.filter(v => v.vehicleType === 'AMBULANCE');
                 }
 
-                return filteredVehicles.length === 0 ? (
-                  <p className="text-gray-500">No suitable vehicles available for this incident type</p>
-                ) : (
-                  filteredVehicles.map(vehicle => (
-                    <div key={vehicle.vehicleId} className="flex justify-between items-center p-2 border rounded">
-                      <div>
-                        <span className="font-medium">{vehicle.registrationNumber}</span>
-                        <span className="text-sm text-gray-500 ml-2">({vehicle.vehicleType})</span>
-                      </div>
-                      <button
-                        onClick={() => assignVehicleToIncident(vehicle.vehicleId)}
-                        className="bg-green-600 text-white px-3 py-1 rounded text-sm hover:bg-green-700"
-                      >
-                        Assign
-                      </button>
+                if (filtered.length === 0) {
+                  return (
+                    <div className="p-4 rounded-xl bg-[#FAF5EF] border border-[#BDD2B6] text-center text-xs text-[#5B6859]">
+                      No compatible units currently in READY state.
                     </div>
-                  ))
+                  );
+                }
+
+                return (
+                  <div className="max-h-60 overflow-y-auto space-y-2 pr-1">
+                    {filtered.map((v) => (
+                      <div
+                        key={v.vehicleId}
+                        className="p-3.5 rounded-xl border border-[#BDD2B6] bg-[#FAF5EF] flex items-center justify-between hover:border-[#A2B29F] transition-colors"
+                      >
+                        <div>
+                          <p className="font-bold text-xs text-[#283227]">
+                            {v.registrationNumber || `Unit #${v.vehicleId}`}
+                          </p>
+                          <p className="text-[10px] text-[#5B6859] font-mono">
+                            Type: {v.vehicleType}
+                          </p>
+                        </div>
+                        <button
+                          onClick={() => assignVehicleToIncident(v.vehicleId)}
+                          className="px-3.5 py-1.5 rounded-xl bg-[#798777] hover:bg-[#687566] text-white text-xs font-bold transition-all shadow-sm shadow-[#798777]/20"
+                        >
+                          Dispatch Unit
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 );
               })()}
             </div>
-            <div className="flex justify-end space-x-2">
+
+            <div className="flex justify-end pt-2 border-t border-[#BDD2B6]">
               <button
-                onClick={() => {
-                  setShowAssignModal(false);
-                  setSelectedIncident(null);
-                }}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                onClick={() => { setShowAssignModal(false); setSelectedIncident(null); }}
+                className="px-5 py-2 rounded-xl bg-[#F8EDE3] text-xs font-semibold text-[#283227] hover:bg-[#FAF5EF] transition-colors"
               >
-                Cancel
+                Close
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Location Picker Modal */}
+      {/* MODAL: LOCATION PICKER */}
       {showLocationPicker && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <div className="bg-white rounded-lg p-6 w-4/5 h-4/5 max-w-4xl">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-semibold">Pick Vehicle Location</h3>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-[#1A2119]/50 backdrop-blur-sm">
+          <div className="bg-white border border-[#BDD2B6] rounded-3xl w-full max-w-3xl h-[550px] flex flex-col overflow-hidden shadow-2xl animate-scaleIn">
+            <div className="p-4 border-b border-[#BDD2B6] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <MapPin className="w-5 h-5 text-[#798777]" />
+                <h3 className="font-bold text-[#283227] text-sm">Select Deployment Station Coordinates</h3>
+              </div>
               <button
                 onClick={() => setShowLocationPicker(false)}
-                className="text-gray-500 hover:text-gray-700"
+                className="p-1 rounded-lg text-[#5B6859] hover:text-[#283227] hover:bg-[#F8EDE3]"
               >
-                ✕
+                <X className="w-5 h-5" />
               </button>
             </div>
-            <div className="h-96 mb-4">
+            <div className="flex-1 relative">
               <LocationPickerMap
                 initialPosition={[newUnit.latitude, newUnit.longitude]}
                 onLocationSelect={(lat, lng) => {
-                  setNewUnit({ ...newUnit, latitude: lat, longitude: lng });
-                  setShowLocationPicker(false);
+                  setNewUnit(prev => ({ ...prev, latitude: lat, longitude: lng }));
                 }}
               />
             </div>
-            <div className="flex justify-end space-x-2">
+            <div className="p-4 border-t border-[#BDD2B6] flex items-center justify-between bg-[#F8EDE3]">
+              <span className="text-xs text-[#5B6859] font-mono">
+                Coordinates: {newUnit.latitude.toFixed(5)}, {newUnit.longitude.toFixed(5)}
+              </span>
               <button
                 onClick={() => setShowLocationPicker(false)}
-                className="bg-gray-300 text-gray-700 px-4 py-2 rounded hover:bg-gray-400"
+                className="px-5 py-2 rounded-xl bg-[#798777] hover:bg-[#687566] text-white text-xs font-bold shadow-md shadow-[#798777]/25"
               >
-                Cancel
+                Confirm Placement
               </button>
             </div>
           </div>
         </div>
       )}
-    </div>
     </div>
   );
 };
 
 export default Dashboard;
-

@@ -1,12 +1,13 @@
-import {authenticatedRequest} from "./apiUtils.js";
-
-const API_URL = 'http://localhost:8080/api/dispatch-automation/enabled'
+import { API_BASE_URL, authenticatedRequest } from './apiUtils';
 
 const automationAPI = {
-    setAutomation:
-        async (isEnabled) => {
-            return authenticatedRequest('POST', `${API_URL}?enabled=${encodeURIComponent(isEnabled)}`);
-        }
+  isEnabled: async () => {
+    return await authenticatedRequest('GET', `${API_BASE_URL}/api/dispatch-automation/enabled`);
+  },
+
+  setAutomation: async (isEnabled) => {
+    return await authenticatedRequest('POST', `${API_BASE_URL}/api/dispatch-automation/enabled?enabled=${encodeURIComponent(isEnabled)}`);
+  }
 };
 
 export default automationAPI;

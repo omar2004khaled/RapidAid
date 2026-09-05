@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { CheckCircle2, AlertCircle, Loader2, ArrowRight, Siren } from 'lucide-react';
 import authAPI from '../services/authAPI';
 
 const EmailVerified = () => {
@@ -9,102 +10,84 @@ const EmailVerified = () => {
   const [message, setMessage] = useState('');
 
   useEffect(() => {
-    const verifyEmail = async () => {
+    const verify = async () => {
       const token = searchParams.get('token');
-      
       if (!token) {
         setStatus('error');
-        setMessage('Invalid verification link.');
+        setMessage('Missing or invalid verification token.');
         return;
       }
 
       try {
-        const data = await authAPI.verifyEmail(token);
-        
+        const res = await authAPI.verifyEmail(token);
         setStatus('success');
-        setMessage(data.message || 'Email verified successfully!');
-        
-        // Redirect to login after 3 seconds
+        setMessage(res?.message || 'Email verified successfully!');
+
         setTimeout(() => {
-          navigate('/login', { 
-            state: { 
-              message: 'Email verified successfully! You can now login.' 
-            } 
+          navigate('/login', {
+            state: { message: 'Email successfully verified. You may now sign in.' }
           });
         }, 3000);
-      } catch (error) {
-        console.error('Email verification error:', error);
+      } catch (err) {
         setStatus('error');
-        setMessage(error.message || 'Verification failed. Please try again.');
+        setMessage(err.message || 'Email verification failed. The link may be expired.');
       }
     };
 
-    verifyEmail();
+    verify();
   }, [searchParams, navigate]);
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
-      <div className="max-w-md w-full bg-white rounded-lg shadow-md p-8 text-center">
+    <div className="min-h-screen flex items-center justify-center bg-[#F8EDE3] p-4 text-[#283227]">
+      <div className="max-w-md w-full bg-white border border-[#BDD2B6] rounded-3xl shadow-xl p-8 text-center space-y-6">
+        <div className="flex items-center justify-center gap-2 mb-2">
+          <Siren className="w-6 h-6 text-[#798777]" />
+          <span className="text-xl font-black text-[#283227]">Rapid<span className="text-[#798777]">Aid</span></span>
+        </div>
+
         {status === 'verifying' && (
-          <>
-            <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-blue-600 animate-spin" fill="none" viewBox="0 0 24 24">
-                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-              </svg>
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Verifying Your Email</h2>
-            <p className="text-gray-600">Please wait while we verify your email address...</p>
-          </>
+          <div className="space-y-4">
+            <Loader2 className="w-12 h-12 text-[#798777] animate-spin mx-auto" />
+            <h2 className="text-2xl font-bold text-[#283227]">Verifying Your Credentials</h2>
+            <p className="text-sm text-[#5B6859]">Please wait while we validate your verification token...</p>
+          </div>
         )}
 
         {status === 'success' && (
-          <>
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-              </svg>
+          <div className="space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-[#BDD2B6]/40 border border-[#A2B29F] text-[#798777] flex items-center justify-center mx-auto shadow-md">
+              <CheckCircle2 className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Email Verified!</h2>
-            <p className="text-gray-600 mb-6">{message}</p>
-            <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-              <p className="text-green-800 text-sm">
-                Redirecting you to login page...
-              </p>
+            <h2 className="text-2xl font-bold text-[#283227]">Email Verified!</h2>
+            <p className="text-sm text-[#5B6859]">{message}</p>
+            <div className="p-3 bg-[#BDD2B6]/30 border border-[#A2B29F] rounded-xl text-xs text-[#283227]">
+              Redirecting you to the sign-in portal in 3 seconds...
             </div>
-            <Link 
-              to="/login" 
-              className="inline-block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            <Link
+              to="/login"
+              className="inline-flex items-center gap-2 px-6 py-3 rounded-xl bg-[#798777] hover:bg-[#687566] text-white font-semibold text-sm shadow-md shadow-[#798777]/25 transition-all"
             >
-              Go to Login Now
+              Sign In Now <ArrowRight className="w-4 h-4" />
             </Link>
-          </>
+          </div>
         )}
 
         {status === 'error' && (
-          <>
-            <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
-              <svg className="w-8 h-8 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
+          <div className="space-y-4">
+            <div className="w-16 h-16 rounded-2xl bg-red-50 border border-red-200 text-red-500 flex items-center justify-center mx-auto shadow-md">
+              <AlertCircle className="w-8 h-8" />
             </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">Verification Failed</h2>
-            <p className="text-gray-600 mb-6">{message}</p>
-            <div className="space-y-3">
-              <Link 
-                to="/signup" 
-                className="block bg-blue-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+            <h2 className="text-2xl font-bold text-[#283227]">Verification Failed</h2>
+            <p className="text-sm text-[#5B6859]">{message}</p>
+            <div className="flex flex-col gap-2 pt-2">
+              <Link
+                to="/login"
+                className="w-full py-3 rounded-xl bg-[#798777] hover:bg-[#687566] text-white font-semibold text-sm shadow-md shadow-[#798777]/25 transition-all"
               >
-                Back to Sign Up
-              </Link>
-              <Link 
-                to="/login" 
-                className="block bg-gray-200 text-gray-800 px-6 py-3 rounded-lg font-semibold hover:bg-gray-300 transition-colors"
-              >
-                Go to Login
+                Go to Sign In
               </Link>
             </div>
-          </>
+          </div>
         )}
       </div>
     </div>
