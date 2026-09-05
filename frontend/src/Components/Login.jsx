@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { Eye, EyeOff } from 'lucide-react';
-import { useLocation } from "react-router-dom";
-import { useEffect } from "react";
+import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
+import { Eye, EyeOff, Siren, AlertCircle, CheckCircle2, ArrowRight } from 'lucide-react';
 import authAPI from '../services/authAPI';
-
 
 const Login = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -15,177 +13,168 @@ const Login = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const location = useLocation();
-
   const [successMessage, setSuccessMessage] = useState(location.state?.message || '');
 
-  const handleGoogleLogin = () => {
-   window.location.href = 'http://localhost:8080/oauth2/authorization/google';
-};
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const errorParam = params.get("error");
+    if (errorParam === "not_registered") {
+      setError("This Google account is not registered. Please sign up first.");
+      setSuccessMessage('');
+      window.history.replaceState({}, "", window.location.pathname);
+    }
+  }, [location]);
 
+  useEffect(() => {
+    if (successMessage) {
+      const timer = setTimeout(() => setSuccessMessage(''), 4000);
+      return () => clearTimeout(timer);
+    }
+  }, [successMessage]);
 
-useEffect(() => {
-  const params = new URLSearchParams(location.search);
-  const errorParam = params.get("error");
-
-  if (errorParam === "not_registered") {
-    setError("This Google account is not registered. Please sign up first.");
-    setSuccessMessage('');
-
-    const cleanUrl = window.location.pathname;
-    window.history.replaceState({}, "", cleanUrl);
-  }
-}, [location]);
   const handleChange = (e) => {
     const { name, value } = e.target;
     setFormData(prev => ({ ...prev, [name]: value }));
     if (error) setError('');
   };
 
-  useEffect(() => {
-  if (successMessage) {
-    const timer = setTimeout(() => setSuccessMessage(''), 3000);
-    return () => clearTimeout(timer);
-  }
-}, [successMessage]);
+  const handleGoogleLogin = () => {
+    window.location.href = 'http://localhost:8080/oauth2/authorization/google';
+  };
 
- const handleSubmit = async (e) => {
-  e.preventDefault();
-  setLoading(true);
-  setError('');
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError('');
 
-  try {
-    const data = await authAPI.login({
-      email: formData.email.toLowerCase().trim(),
-      password: formData.password
-    });
+    try {
+      const data = await authAPI.login({
+        email: formData.email.toLowerCase().trim(),
+        password: formData.password
+      });
 
-    if (data.token) {
-      localStorage.setItem('authToken', data.token);
-      console.log("Login successful, token stored");
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+        if (data.role) localStorage.setItem('userRole', data.role);
+        if (data.email) localStorage.setItem('userEmail', data.email);
+      }
+
+      navigate('/dashboard');
+    } catch (err) {
+      let msg = err.message || 'Login failed';
+      if (msg.includes('verify') || msg.includes('verified')) {
+        msg = 'Please verify your email before logging in. Check your inbox for the verification link.';
+      } else if (msg.includes('401')) {
+        msg = 'Invalid email or password. Please try again.';
+      } else if (msg.includes('403')) {
+        msg = 'Account not verified or pending approval. Please check your email.';
+      } else if (msg.includes('Failed to fetch')) {
+        msg = 'Cannot connect to server. Please verify backend is running on http://localhost:8080';
+      }
+      setError(msg);
+    } finally {
+      setLoading(false);
     }
-
-    navigate('/dashboard'); 
-  } catch (error) {
-    console.error("Login Error:", error);
-    
-    let errorMessage = error.message;
-    
-    if (errorMessage.includes('verify') || errorMessage.includes('verified')) {
-      errorMessage = 'Please verify your email before logging in. Check your inbox for the verification link.';
-    } else if (errorMessage.includes('401')) {
-      errorMessage = 'Invalid email or password. Please try again.';
-    } else if (errorMessage.includes('403')) {
-      errorMessage = 'Account not verified. Please check your email for verification link.';
-    } else if (errorMessage.includes('Failed to fetch')) {
-      errorMessage = 'Cannot connect to server. Please ensure the backend server is running on http://localhost:8080';
-    }
-    
-    setError(errorMessage);
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   return (
-    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2">
-      {/* Left Panel */}
-      <div className="hidden md:flex flex-col justify-between p-12 bg-gradient-to-br from-red-600 via-red-700 to-black text-center">
-            <div className="self-start">
-              <div className="flex items-center gap-2">
-                <img 
-                    src="/logo.jpg" 
-                    alt="Logo"
-                    className="h-12 w-auto object-contain"
-                    />
-                <span className="text-2xl font-bold text-white dark:text-gray-200">Emergency Dispatch</span>
-              </div>
-            </div>
-            <div className="flex flex-col gap-6">
-              <h1 className="text-white dark:text-gray-200 text-5xl font-black leading-tight tracking-[-0.033em]">
-                Rapid. Reliable. Response.
-              </h1>
-              <h2 className="text-gray-100 dark:text-gray-300 text-base font-normal leading-normal">
-                Smart Emergency Dispatch Optimization System - Connecting responders when every second counts.
-              </h2>
-            </div>
-            <div></div>
+    <div className="min-h-screen w-full grid grid-cols-1 md:grid-cols-2 bg-[#F8EDE3] text-[#283227]">
+      {/* Left Emergency Hero Panel */}
+      <div className="hidden md:flex flex-col justify-between p-12 bg-gradient-to-br from-[#798777] via-[#5B6859] to-[#3F493D] relative overflow-hidden border-r border-[#BDD2B6]/30">
+        <div className="absolute -right-24 -bottom-24 w-96 h-96 bg-[#BDD2B6]/15 rounded-full blur-3xl pointer-events-none" />
+        <div className="absolute -left-24 -top-24 w-96 h-96 bg-[#F8EDE3]/15 rounded-full blur-3xl pointer-events-none" />
+
+        {/* Brand header */}
+        <div className="flex items-center gap-3 relative z-10">
+          <div className="w-12 h-12 rounded-2xl bg-white/15 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl">
+            <Siren className="w-6 h-6 text-[#F8EDE3] animate-pulse" />
           </div>
+          <div>
+            <h2 className="text-2xl font-black tracking-tight text-white">
+              Rapid<span className="text-[#BDD2B6]">Aid</span>
+            </h2>
+            <p className="text-xs text-[#E5ECE3] font-medium tracking-wide">Emergency Dispatch System</p>
+          </div>
+        </div>
 
-      {/* Right Panel - Login Form */}
-      <div className="flex items-center justify-center p-6 sm:p-8 lg:p-12 bg-gray-900">
-        <div className="w-full max-w-md flex flex-col gap-8">
-          <div className="flex flex-col gap-4">
-            <div className="flex items-center gap-2 md:justify-start justify-center">
-              <div className="w-8 h-8 rounded-full bg-red-600/20 flex items-center justify-center">
-                <svg 
-                  className="w-5 h-5 text-red-500"
-                  fill="none" 
-                  stroke="currentColor" 
-                  strokeWidth="2.5" 
-                  viewBox="0 0 48 48"
-                >
-                  <path 
-                    d="M24 6 C14.058 6 6 14.058 6 24 C 6 33.942 14.058 42 24 42 C 33.942 42 42 33.942 42 24" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                  <path 
-                    d="M30 18 L18 30" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                  <path 
-                    d="M18 18 H30 V30" 
-                    strokeLinecap="round" 
-                    strokeLinejoin="round"
-                  />
-                </svg>
-              </div>
-             
-            </div>
+        {/* Center message */}
+        <div className="relative z-10 space-y-6 max-w-lg">
+          <h1 className="text-5xl font-extrabold tracking-tight leading-tight text-white">
+            Rapid & Reliable <span className="text-[#BDD2B6]">Response.</span>
+          </h1>
+          <p className="text-[#E7EDE5] text-base leading-relaxed">
+            Intelligent emergency dispatch coordination connecting medical, fire, and police units with real-time tracking when every second counts.
+          </p>
+        </div>
 
-            <div className="flex flex-col gap-2 text-center md:text-left">
-              <h1 className="text-3xl font-bold text-white">Emergency Dispatch Login</h1>
-              <p className="text-gray-300">
-                Access the Smart Emergency Dispatch Optimization System
-              </p>
+        {/* Footer info */}
+        <div className="relative z-10 text-xs text-[#D8E2D6] font-mono">
+          RapidAid System &bull; Secured with TLS & JWT &bull; 2026
+        </div>
+      </div>
+
+      {/* Right Login Form Panel */}
+      <div className="flex items-center justify-center p-6 sm:p-12 bg-[#F8EDE3]">
+        <div className="w-full max-w-md bg-white p-8 sm:p-10 rounded-3xl shadow-xl border border-[#BDD2B6] space-y-7">
+          {/* Header */}
+          <div className="space-y-1.5">
+            <div className="flex items-center gap-2 md:hidden mb-4">
+              <Siren className="w-6 h-6 text-[#798777]" />
+              <span className="text-xl font-bold text-[#283227]">RapidAid</span>
             </div>
+            <h2 className="text-3xl font-extrabold text-[#283227] tracking-tight">
+              Sign In to Command
+            </h2>
+            <p className="text-sm text-[#5B6859]">
+              Access the emergency dispatch optimization platform
+            </p>
           </div>
 
           {/* Error Message */}
           {error && (
-            <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                <p className="text-sm text-red-700">{error}</p>
+            <div className="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-sm flex items-start gap-3">
+              <AlertCircle className="w-5 h-5 text-rose-600 flex-shrink-0 mt-0.5" />
+              <span className="leading-snug">{error}</span>
             </div>
-            )}
+          )}
 
-            {/* Success Message */}
-            {successMessage && (
-            <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
-                <p className="text-sm text-green-700">{successMessage}</p>
+          {/* Success Message */}
+          {successMessage && (
+            <div className="p-4 rounded-xl bg-[#BDD2B6]/30 border border-[#A2B29F] text-[#283227] text-sm flex items-start gap-3">
+              <CheckCircle2 className="w-5 h-5 text-[#798777] flex-shrink-0 mt-0.5" />
+              <span className="leading-snug">{successMessage}</span>
             </div>
-            )}
+          )}
 
-          {/* Login Form */}
-          <form onSubmit={handleSubmit} className="flex flex-col gap-5">
-            {/* Email */}
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-white">Email Address</span>
+          {/* Form */}
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs font-semibold text-[#5B6859] uppercase tracking-wider mb-2">
+                Email Address
+              </label>
               <input
                 type="email"
                 name="email"
                 value={formData.email}
                 onChange={handleChange}
                 required
-                className="h-12 px-4 rounded-lg border border-gray-600 bg-gray-800 focus:bg-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 text-white placeholder:text-gray-400 transition-colors"
-                placeholder="you@example.com"
+                placeholder="dispatcher@emergency.gov"
+                className="w-full h-12 px-4 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] focus:outline-none focus:border-[#798777] focus:ring-2 focus:ring-[#798777]/20 transition-all text-sm"
               />
-            </label>
+            </div>
 
-            {/* Password */}
-            <label className="flex flex-col gap-2">
-              <span className="text-sm font-medium text-white">Password</span>
+            <div>
+              <div className="flex items-center justify-between mb-2">
+                <label className="text-xs font-semibold text-[#5B6859] uppercase tracking-wider">
+                  Password
+                </label>
+                <Link
+                  to="/forgot-password"
+                  className="text-xs text-[#798777] hover:text-[#283227] font-semibold transition-colors"
+                >
+                  Forgot password?
+                </Link>
+              </div>
               <div className="relative">
                 <input
                   type={showPassword ? 'text' : 'password'}
@@ -193,109 +182,44 @@ useEffect(() => {
                   value={formData.password}
                   onChange={handleChange}
                   required
-                  className="h-12 w-full px-4 pr-12 rounded-lg border border-gray-600 bg-gray-800 focus:bg-gray-700 focus:border-red-500 focus:ring-2 focus:ring-red-500/20 text-white placeholder:text-gray-400 transition-colors"
-                  placeholder="Enter your password"
+                  placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+                  className="w-full h-12 px-4 pr-12 rounded-xl bg-[#F8EDE3]/40 border border-[#BDD2B6] text-[#283227] placeholder-[#A2B29F] focus:outline-none focus:border-[#798777] focus:ring-2 focus:ring-[#798777]/20 transition-all text-sm font-mono"
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-0 top-0 h-12 px-4 text-gray-400 hover:text-white transition-colors"
-                  aria-label="Toggle password visibility"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-[#798777] hover:text-[#283227] transition-colors"
                 >
-                  {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-            </label>
-
-            {/* Submit Button */}
-            <div className="flex flex-col gap-4 mt-2">
-            <button
-            type="submit"
-            disabled={loading}
-            className="h-12 w-full bg-gradient-to-r from-red-600 to-red-700 hover:from-red-700 hover:to-red-800 text-white font-semibold rounded-lg transition-all disabled:opacity-60 disabled:cursor-not-allowed flex items-center justify-center shadow-lg"
-            >
-            {loading ? (
-                <>
-                <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
-                </svg>
-                Logging in...
-                </>
-            ) : (
-                'Log In'
-            )}
-            </button>
-
-              <div className="text-center">
-                <Link 
-                  to="/forgot-password"
-                  className="text-sm font-medium text-red-400 hover:text-red-300 hover:underline"
-                >
-                  Forgot Password?
-                </Link>
-              </div>
             </div>
+
+            <button
+              type="submit"
+              disabled={loading}
+              className="w-full h-12 rounded-xl bg-[#798777] hover:bg-[#687566] text-white font-bold text-sm shadow-md shadow-[#798777]/25 transition-all disabled:opacity-60 flex items-center justify-center gap-2"
+            >
+              {loading ? (
+                <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>
+                  <span>Sign In</span>
+                  <ArrowRight className="w-4 h-4" />
+                </>
+              )}
+            </button>
           </form>
 
-          {/* Divider */}
-          <div className="relative">
-            <div className="absolute inset-0 flex items-center">
-              <div className="w-full border-t border-border" />
-            </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-gray-900 px-2 text-gray-400">or</span>
-            </div>
-          </div>
-
-          {/* Google login */}
-                <button
-                  type="button"
-                 onClick={handleGoogleLogin}
-                  className="flex w-full items-center justify-center gap-2 h-12 px-4 rounded-lg border border-gray-600 bg-gray-800 hover:bg-gray-700 transition-colors"
-                >
-                  <svg className="h-5 w-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-                    <path
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                      fill="#4285F4"
-                    ></path>
-                    <path
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                      fill="#34A853"
-                    ></path>
-                    <path
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z"
-                      fill="#FBBC05"
-                    ></path>
-                    <path
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
-                      fill="#EA4335"
-                    ></path>
-                  </svg>
-                  <span className="text-sm font-medium text-white">Continue with Google</span>
-                </button>
-
-
-          {/* Report Emergency Button */}
-          <div className="text-center border-t border-gray-700 pt-6">
-            <Link 
-              to="/report" 
-              className="w-full bg-orange-600 text-white px-4 py-3 rounded-lg hover:bg-orange-700 transition-colors flex items-center justify-center gap-2 mb-4"
+          {/* Emergency reporting quick link */}
+          <div className="pt-5 border-t border-[#BDD2B6]/60 text-center">
+            <Link
+              to="/report"
+              className="w-full h-11 rounded-xl bg-[#BDD2B6]/30 hover:bg-[#BDD2B6]/50 border border-[#BDD2B6] text-[#283227] font-semibold text-xs flex items-center justify-center gap-2 transition-colors"
             >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z" />
-              </svg>
-              Report Emergency
+              <Siren className="w-4 h-4 text-[#798777]" />
+              Public Emergency Incident Reporting Portal
             </Link>
-            <p className="text-sm text-gray-300">
-              Don't have an account?{' '}
-              <Link 
-                to="/signup" 
-                className="font-semibold text-red-400 hover:text-red-300 hover:underline"
-              >
-                Sign Up
-              </Link>
-            </p>
           </div>
         </div>
       </div>

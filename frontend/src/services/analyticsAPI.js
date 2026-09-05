@@ -1,21 +1,17 @@
-import { authenticatedRequest } from './apiUtils';
+import { API_BASE_URL, authenticatedRequest } from './apiUtils';
 
-const ANALYTICS_URL = 'http://localhost:8080/api/analytics';
+const analyticsAPI = {
+  getPerformanceMetrics: async () => {
+    return await authenticatedRequest('GET', `${API_BASE_URL}/api/analytics/performance-metrics`);
+  },
 
-const getPerformanceMetrics = async () => {
-    return await authenticatedRequest('GET', `${ANALYTICS_URL}/performance-metrics`);
+  getResponseTimeTrend: async (days = 30) => {
+    return await authenticatedRequest('GET', `${API_BASE_URL}/api/analytics/response-time-trend?days=${days}`);
+  },
+
+  getTopPerformingUnits: async (limit = 5) => {
+    return await authenticatedRequest('GET', `${API_BASE_URL}/api/analytics/top-units?limit=${limit}`);
+  }
 };
 
-const getResponseTimeTrend = async (days = 30) => {
-    return await authenticatedRequest('GET', `${ANALYTICS_URL}/response-time-trend?days=${days}`);
-};
-
-const getTopPerformingUnits = async (limit = 5) => {
-    return await authenticatedRequest('GET', `${ANALYTICS_URL}/top-units?limit=${limit}`);
-};
-
-export default {
-    getPerformanceMetrics,
-    getResponseTimeTrend,
-    getTopPerformingUnits,
-};
+export default analyticsAPI;

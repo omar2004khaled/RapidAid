@@ -1,13 +1,11 @@
 /**
- * API Utility Functions
- * Shared utilities for API calls
+ * RapidAid API Utilities
  */
 
 export const API_BASE_URL = 'http://localhost:8080';
 
 /**
- * Get authentication headers
- * @returns {Object} Headers object with auth token if available
+ * Returns authentication headers including Bearer token if present
  */
 export const getAuthHeaders = () => {
   const token = localStorage.getItem('authToken');
@@ -19,10 +17,7 @@ export const getAuthHeaders = () => {
 };
 
 /**
- * Handle API response
- * @param {Response} response - Fetch API response
- * @returns {Promise<Object>} Parsed response data
- * @throws {Error} If response is not ok
+ * Standard response handler for fetch requests
  */
 export const handleResponse = async (response) => {
   const contentType = response.headers.get('content-type');
@@ -36,21 +31,20 @@ export const handleResponse = async (response) => {
   }
 
   if (!response.ok) {
-    throw new Error(data.message || data.error || `HTTP error! status: ${response.status}`);
+    const message = data.message || data.error || `HTTP error ${response.status}`;
+    throw new Error(message);
   }
 
   return data;
 };
 
 /**
- * Build query string from params object
- * @param {Object} params - Query parameters
- * @returns {string} Query string
+ * Builds query string from parameter map
  */
 export const buildQueryString = (params) => {
   const queryParams = new URLSearchParams();
   Object.entries(params).forEach(([key, value]) => {
-    if (value !== undefined && value !== null) {
+    if (value !== undefined && value !== null && value !== '') {
       queryParams.append(key, value);
     }
   });
@@ -59,11 +53,7 @@ export const buildQueryString = (params) => {
 };
 
 /**
- * Make an authenticated API request
- * @param {string} method - HTTP method
- * @param {string} url - Request URL
- * @param {Object} [body] - Request body
- * @returns {Promise<Object>} Response data
+ * Authenticated request wrapper
  */
 export const authenticatedRequest = async (method, url, body = null) => {
   const headers = getAuthHeaders();
